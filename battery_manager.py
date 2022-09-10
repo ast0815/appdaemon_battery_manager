@@ -30,9 +30,46 @@ class BatteryManager(hass.Hass):
         self.emergency_charge = self.args.get("emergency_charge", 10)
 
         # Update battery state every minute
-        self.run_minutely(self.control_battery, datetime.time(minute=0, second=0))
+        self.run_minutely(self.control_battery, datetime.time(minute=0, second=1))
 
     def control_battery(self, kwargs):
         prices = self.global_vars["electricity_prices"]
 
-        self.log(prices)
+        now = datetime.datetime.now()
+        now = now.replace(minute=0, second=0)
+        current_price = prices[now]
+
+        self.log((now, current_price))
+
+        # Simple algorithm:
+        # Charge if price is in lowest quartile,
+        # Dischare in highers quartile,
+        # Store otherwise
+
+        if current_price < prices.quantile(0.25):
+            self.charge()
+        elif current_price > prices.quantile(0.75):
+            self.discharge()
+        else:
+            self.store()
+
+    def charge(self, target=None):
+        """Charge the battery."""
+
+        if target is None:
+            target = self.max_charge
+
+        self.set_value(self.charge_control_entity, target)
+        self.switch_on(self.enable_AC_input_entity)
+
+    def store(self):
+        """Keep current charge level."""
+
+        target = self.get_value(self.charge_state_entity)
+        self.set_value(self.charge_control_entity, target)
+        self.switch_on(self.enable_AC_input_entity)
+
+    def discharge(self):
+        """Discharge the battery."""
+
+        self.switch_off(self.enable_AC_input_entity)

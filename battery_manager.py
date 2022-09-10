@@ -19,7 +19,6 @@ emergency_charge : Charge state at which the AC input will be enabled no matter 
 
 
 class BatteryManager(hass.Hass):
-
     def initialize(self):
         # Set configuration
         self.enable_AC_input_entity = self.args["AC_input"]
@@ -39,7 +38,11 @@ class BatteryManager(hass.Hass):
         now = now.replace(minute=0, second=0, microsecond=0)
         current_price = prices[now]
 
-        self.log((now, current_price))
+        # Emergency charge
+        emergency = self.emergency_charge
+        if self.get_value(self.charge_state_entity) < emergency:
+            self.charge(target=emergency)
+            return
 
         # Simple algorithm:
         # Charge if price is in lowest quartile,

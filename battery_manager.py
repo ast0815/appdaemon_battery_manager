@@ -14,7 +14,7 @@ emergency_charge : Charge state at which the AC input will be enabled no matter 
 """
 
 
-class battery_manager(hass.Hass)
+class BatteryManager(hass.Hass)
 
     def initialize(self):
         self.enable_AC_input_entity = self.args["AC_input"]

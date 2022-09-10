@@ -2,6 +2,9 @@ import hassapi as hass
 
 """App to control batteries charging and discharging based on elecricity prices.
 
+It depends on another app publishing a Pandas time series of current and future
+energy as a global variable "energy_prices".
+
 Configuration:
 
 AC_input : Switch entity controlling the AC input to the battery
@@ -17,9 +20,18 @@ emergency_charge : Charge state at which the AC input will be enabled no matter 
 class BatteryManager(hass.Hass):
 
     def initialize(self):
+        # Set configuration
         self.enable_AC_input_entity = self.args["AC_input"]
         self.charge_control_entity = self.args["charge_control"]
         self.charge_state_entity = self.args["charge_state"]
         self.max_charge = self.args.get("max_charge", 90)
         self.min_charge = self.args.get("max_charge", 30)
         self.emergency_charge = self.args.get("emergency_charge", 10)
+
+        # Update battery state every minute
+        self.run_minutely(self.control_battery)
+
+    def control_battery(self, kwargs):
+        prices = self.global_vars("energy_prices")
+
+        self.log(prices)

@@ -1,4 +1,5 @@
 import hassapi as hass
+import datetime
 
 """App to control batteries charging and discharging based on elecricity prices.
 
@@ -29,7 +30,7 @@ class BatteryManager(hass.Hass):
         self.emergency_charge = self.args.get("emergency_charge", 10)
 
         # Update battery state every minute
-        self.run_minutely(self.control_battery, "now")
+        self.run_minutely(self.control_battery, datetime.time.now())
 
     def control_battery(self, kwargs):
         prices = self.global_vars("energy_prices")

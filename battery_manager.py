@@ -40,9 +40,10 @@ class BatteryManager(hass.Hass):
         current_price = prices[now]
 
         # Emergency charge
+        #
+        # TODO: Prevent flip-flopping
         emergency = self.emergency_charge
         charge = int(self.get_state(self.charge_state_entity))
-        self.log((emergency, charge))
         if charge < emergency:
             self.charge(target=self.min_charge)
             return

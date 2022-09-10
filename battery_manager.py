@@ -65,14 +65,14 @@ class BatteryManager(hass.Hass):
         if target is None:
             target = self.max_charge
 
-        self.set_state(self.charge_control_entity, target)
+        self.set_state(self.charge_control_entity, state=target)
         self.turn_on(self.enable_AC_input_entity)
 
     def store(self):
         """Keep current charge level."""
 
         target = int(self.get_state(self.charge_state_entity))
-        self.set_state(self.charge_control_entity, target)
+        self.set_state(self.charge_control_entity, state=target)
         self.turn_on(self.enable_AC_input_entity)
 
     def discharge(self):

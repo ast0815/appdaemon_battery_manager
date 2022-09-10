@@ -41,7 +41,9 @@ class BatteryManager(hass.Hass):
 
         # Emergency charge
         emergency = self.emergency_charge
-        if int(self.get_state(self.charge_state_entity)) < emergency:
+        charge = int(self.get_state(self.charge_state_entity))
+        self.log((emergency, charge))
+        if charge < emergency:
             self.charge(target=self.min_charge)
             return
 

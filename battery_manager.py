@@ -4,7 +4,7 @@ import datetime
 """App to control batteries charging and discharging based on elecricity prices.
 
 It depends on another app publishing a Pandas time series of current and future
-energy as a global variable "energy_prices".
+energy as a global variable "electricity_prices".
 
 Configuration:
 
@@ -33,6 +33,6 @@ class BatteryManager(hass.Hass):
         self.run_minutely(self.control_battery, datetime.time(minute=0, second=0))
 
     def control_battery(self, kwargs):
-        prices = self.global_vars["energy_prices"]
+        prices = self.global_vars["electricity_prices"]
 
         self.log(prices)

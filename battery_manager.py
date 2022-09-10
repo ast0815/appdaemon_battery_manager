@@ -26,7 +26,7 @@ class BatteryManager(hass.Hass):
         self.charge_control_entity = self.args["charge_control"]
         self.charge_state_entity = self.args["charge_state"]
         self.max_charge = int(self.args.get("max_charge", 90))
-        self.min_charge = int(self.args.get("max_charge", 30))
+        self.min_charge = int(self.args.get("min_charge", 30))
         self.emergency_charge = int(self.args.get("emergency_charge", 10))
 
         # Update battery state every minute
@@ -42,7 +42,7 @@ class BatteryManager(hass.Hass):
         # Emergency charge
         emergency = self.emergency_charge
         if int(self.get_state(self.charge_state_entity)) < emergency:
-            self.charge(target=emergency)
+            self.charge(target=self.min_charge)
             return
 
         # Simple algorithm:

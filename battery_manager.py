@@ -40,7 +40,7 @@ class BatteryManager(hass.Hass):
 
         # Emergency charge
         emergency = self.emergency_charge
-        if self.get_value(self.charge_state_entity) < emergency:
+        if self.get_state(self.charge_state_entity) < emergency:
             self.charge(target=emergency)
             return
 
@@ -62,14 +62,14 @@ class BatteryManager(hass.Hass):
         if target is None:
             target = self.max_charge
 
-        self.set_value(self.charge_control_entity, target)
+        self.set_state(self.charge_control_entity, target)
         self.turn_on(self.enable_AC_input_entity)
 
     def store(self):
         """Keep current charge level."""
 
-        target = self.get_value(self.charge_state_entity)
-        self.set_value(self.charge_control_entity, target)
+        target = self.get_state(self.charge_state_entity)
+        self.set_state(self.charge_control_entity, target)
         self.turn_on(self.enable_AC_input_entity)
 
     def discharge(self):

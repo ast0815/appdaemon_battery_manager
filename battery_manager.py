@@ -36,7 +36,7 @@ class BatteryManager(hass.Hass):
         prices = self.global_vars["electricity_prices"]
 
         now = datetime.datetime.now()
-        now = now.replace(minute=0, second=0, millisecond=0)
+        now = now.replace(minute=0, second=0, microsecond=0)
         current_price = prices[now]
 
         self.log((now, current_price))

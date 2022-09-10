@@ -35,7 +35,7 @@ class BatteryManager(hass.Hass):
     def control_battery(self, kwargs):
         prices = self.global_vars["electricity_prices"]
 
-        now = pd.Timestamp.now()
+        now = pd.Timestamp.now(tz=prices.index.tz)
         now = now.replace(minute=0, second=0, microsecond=0)
         current_price = prices[now]
 

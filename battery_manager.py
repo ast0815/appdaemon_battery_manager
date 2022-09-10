@@ -33,6 +33,6 @@ class BatteryManager(hass.Hass):
         self.run_minutely(self.control_battery, datetime.time(minute=0, second=0))
 
     def control_battery(self, kwargs):
-        prices = self.global_vars("energy_prices")
+        prices = self.global_vars["energy_prices"]
 
         self.log(prices)

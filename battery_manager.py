@@ -24,9 +24,9 @@ class BatteryManager(hass.Hass):
         self.enable_AC_input_entity = self.args["AC_input"]
         self.charge_control_entity = self.args["charge_control"]
         self.charge_state_entity = self.args["charge_state"]
-        self.max_charge = self.args.get("max_charge", 90)
-        self.min_charge = self.args.get("max_charge", 30)
-        self.emergency_charge = self.args.get("emergency_charge", 10)
+        self.max_charge = int(self.args.get("max_charge", 90))
+        self.min_charge = int(self.args.get("max_charge", 30))
+        self.emergency_charge = int(self.args.get("emergency_charge", 10))
 
         # Update battery state every minute
         self.run_minutely(self.control_battery, datetime.time(minute=0, second=1))
@@ -40,7 +40,7 @@ class BatteryManager(hass.Hass):
 
         # Emergency charge
         emergency = self.emergency_charge
-        if self.get_state(self.charge_state_entity) < emergency:
+        if int(self.get_state(self.charge_state_entity)) < emergency:
             self.charge(target=emergency)
             return
 
@@ -68,7 +68,7 @@ class BatteryManager(hass.Hass):
     def store(self):
         """Keep current charge level."""
 
-        target = self.get_state(self.charge_state_entity)
+        target = int(self.get_state(self.charge_state_entity))
         self.set_state(self.charge_control_entity, target)
         self.turn_on(self.enable_AC_input_entity)
 

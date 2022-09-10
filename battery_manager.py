@@ -30,7 +30,7 @@ class BatteryManager(hass.Hass):
         self.emergency_charge = self.args.get("emergency_charge", 10)
 
         # Update battery state every minute
-        self.run_minutely(self.control_battery, datetime.time.now())
+        self.run_minutely(self.control_battery, datetime.time(minute=0, second=0))
 
     def control_battery(self, kwargs):
         prices = self.global_vars("energy_prices")

@@ -1,5 +1,6 @@
 import hassapi as hass
 import datetime
+import pandas as pd
 
 """App to control batteries charging and discharging based on elecricity prices.
 
@@ -34,7 +35,7 @@ class BatteryManager(hass.Hass):
     def control_battery(self, kwargs):
         prices = self.global_vars["electricity_prices"]
 
-        now = datetime.datetime.now()
+        now = pd.Timestamp.now()
         now = now.replace(minute=0, second=0, microsecond=0)
         current_price = prices[now]
 

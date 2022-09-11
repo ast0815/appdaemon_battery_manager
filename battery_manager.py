@@ -39,8 +39,7 @@ class BatteryManager(hass.Hass):
         prices = self.global_vars["electricity_prices"]
 
         now = pd.Timestamp.now(tz=prices.index.tz)
-        now = now.replace(minute=0, second=0, microsecond=0)
-        current_price = prices[now]
+        current_price = prices.asof(now)
 
         # Emergency charge
         threshold = self.emergency_charge

@@ -74,6 +74,8 @@ class BatteryManager(hass.Hass):
         """Keep current charge level."""
 
         target = int(self.get_state(self.charge_state_entity))
+        if target < self.min_charge:
+            target = self.min_charge
         self.set_state(self.charge_control_entity, state=target)
         self.turn_on(self.enable_AC_input_entity)
         self.log("Storing at %d%%"%(target,))

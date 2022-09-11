@@ -68,6 +68,7 @@ class BatteryManager(hass.Hass):
 
         self.set_state(self.charge_control_entity, state=target)
         self.turn_on(self.enable_AC_input_entity)
+        self.log("Charging to %d%%"%(target,))
 
     def store(self):
         """Keep current charge level."""
@@ -75,8 +76,10 @@ class BatteryManager(hass.Hass):
         target = int(self.get_state(self.charge_state_entity))
         self.set_state(self.charge_control_entity, state=target)
         self.turn_on(self.enable_AC_input_entity)
+        self.log("Storing at %d%%"%(target,))
 
     def discharge(self):
         """Discharge the battery."""
 
         self.turn_off(self.enable_AC_input_entity)
+        self.log("Discharging")

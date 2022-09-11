@@ -29,6 +29,9 @@ class BatteryManager(hass.Hass):
         self.min_charge = int(self.args.get("min_charge", 30))
         self.emergency_charge = int(self.args.get("emergency_charge", 10))
 
+        # Are we in emergency charge mode?
+        self.emergency = False
+
         # Update battery state every minute
         self.run_minutely(self.control_battery, datetime.time(minute=0, second=1))
 
@@ -40,13 +43,10 @@ class BatteryManager(hass.Hass):
         current_price = prices[now]
 
         # Emergency charge
-        #
-        # TODO: Prevent flip-flopping
-        emergency = self.emergency_charge
+        threshold = self.emergency_charge
         charge = int(self.get_state(self.charge_state_entity))
         if charge < emergency:
-            self.charge(target=self.min_charge)
-            return
+            self.emergency = True
 
         # Simple algorithm:
         # Charge if price is in lowest quartile,
@@ -54,7 +54,12 @@ class BatteryManager(hass.Hass):
         # Store otherwise
 
         if current_price < prices.quantile(0.25):
+            # If we are charging regularly, clear emergency state
+            self.emergency = False
             self.charge()
+        elif self.emergency:
+            # Otherwise, charge in an emergency
+            self.charge(self.min_charge)
         elif current_price > prices.quantile(0.75):
             self.discharge()
         else:

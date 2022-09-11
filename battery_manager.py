@@ -45,7 +45,7 @@ class BatteryManager(hass.Hass):
         # Emergency charge
         threshold = self.emergency_charge
         charge = int(self.get_state(self.charge_state_entity))
-        if charge < emergency:
+        if charge < threshold:
             self.emergency = True
 
         # Simple algorithm:

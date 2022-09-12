@@ -33,6 +33,8 @@ class BatteryManager(hass.Hass):
         self.charge_quantile = float(self.args.get("charge_quantile", 0.25))
         self.discharge_quantile = float(self.args.get("discharge_quantile", 0.75))
 
+        self.log("Loaded with configuration: %s"%(dir(self),))
+
         # Are we in emergency charge mode?
         self.emergency = False
 

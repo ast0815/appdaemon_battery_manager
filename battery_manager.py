@@ -58,7 +58,7 @@ class BatteryManager(hass.Hass):
         # Dischare if price is above discharge quantile,
         # Store otherwise
 
-        if current_price < prices.quantile(self.charge_quantile):
+        if current_price <= prices.quantile(self.charge_quantile):
             # If we are charging regularly, clear emergency state
             self.emergency = False
             self.charge()

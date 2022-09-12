@@ -15,6 +15,8 @@ charge_state : Numerical sensor reporting the charge state in %
 max_charge : Maximum charge target to set, optional, default: 90
 max_charge : Minimum charge target to set, optional, default: 30
 emergency_charge : Charge state at which the AC input will be enabled no matter what, optional, default: 10
+charge_quantile : Charge the battery if the current price is below this quantile, optional, default: 0.25
+dicharge_quantile : Discharge the battery if the current price is above this quantile, optional, default: 0.75
 
 """
 
@@ -28,6 +30,8 @@ class BatteryManager(hass.Hass):
         self.max_charge = int(self.args.get("max_charge", 90))
         self.min_charge = int(self.args.get("min_charge", 30))
         self.emergency_charge = int(self.args.get("emergency_charge", 10))
+        self.charge_quantile = float(self.args.get("charge_quantile", 0.25))
+        self.discharge_quantile = float(self.args.get("discharge_quantile", 0.75))
 
         # Are we in emergency charge mode?
         self.emergency = False
@@ -50,18 +54,18 @@ class BatteryManager(hass.Hass):
             self.emergency = True
 
         # Simple algorithm:
-        # Charge if price is in lowest quartile,
-        # Dischare in highers quartile,
+        # Charge if price is in charge quantile,
+        # Dischare if price is above discharge quantile,
         # Store otherwise
 
-        if current_price < prices.quantile(0.25):
+        if current_price < prices.quantile(self.charge_quantile):
             # If we are charging regularly, clear emergency state
             self.emergency = False
             self.charge()
         elif self.emergency:
             # Otherwise, charge in an emergency
             self.charge(self.min_charge)
-        elif current_price > prices.quantile(0.75):
+        elif current_price > prices.quantile(self.discharge_quantile):
             self.discharge()
         else:
             self.store()

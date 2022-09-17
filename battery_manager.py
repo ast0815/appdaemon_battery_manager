@@ -92,6 +92,7 @@ class BatteryManager(hass.Hass):
         if self.publish:
             index, values = zip(*steps)
             series = pd.Series(values, index)
+            self.log(series)
             self.global_vars[self.publish] = series
 
         if len(steps) < 2:

@@ -49,6 +49,7 @@ class BatteryManager(hass.Hass):
                     "Max Charge Rate": self.max_charge_rate,
                     "Mean Discharge Rate": self.mean_discharge_rate,
                     "Round-Trip Efficiency": self.round_trip_efficiency,
+                    "Publish": self.publish,
                 },
             )
         )

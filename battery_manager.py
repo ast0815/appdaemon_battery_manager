@@ -168,6 +168,10 @@ class AStarStrategy(AStar):
         self.min_charge = min_charge
         self.max_charge = max_charge
 
+        # Pre-calculate minimum prices for rest of time range
+        self.min_future_prices = prices[::-1].expanding().min()[::-1]
+        self.log(self.min_future_prices)
+
     def distance_between(self, n1, n2):
         """Calculate the cost when transitioning from state n1 to state n2."""
 

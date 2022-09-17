@@ -111,7 +111,11 @@ class BatteryManager(hass.Hass):
         elif next_charge < charge:
             await self.discharge()
         else:
-            await self.store()
+            # Only switch to "store" if next step is longer than 10 minutes in the future.
+            # Otherwise we would always switch to "store" towards when reaching the target level.
+            # This would mess up discharging.
+            if (steps[1][0] - steps[0][0]) > pd.Timedelta(minutes=10):
+                await self.store()
 
     async def charge(self, target=None):
         """Charge the battery."""
@@ -123,13 +127,15 @@ class BatteryManager(hass.Hass):
         await self.turn_on(self.enable_AC_input_entity)
 
     async def store(self):
-        """Keep current charge level."""
+        """Keep current charge level.
+
+        Just a convenience function to charge up to the current level.
+        """
 
         target = int(await self.get_state(self.charge_state_entity))
         if target < self.min_charge:
             target = self.min_charge
-        await self.set_value(self.charge_control_entity, target)
-        await self.turn_on(self.enable_AC_input_entity)
+        await self.charge(target)
 
     async def discharge(self):
         """Discharge the battery."""

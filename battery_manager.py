@@ -239,7 +239,9 @@ class AStarStrategy(AStar):
             charges.add(self.min_charge)
         if self.max_charge <= max_charge:  # Make sure total max is in there
             charges.add(self.max_charge)
-        charges.add(node[1])  # Make sure current charge is in there
+        charges.add(node[1])  # Make sure current charge and neighbours are in there
+        charges.add(node[1] + 1) # This ensures we do not always switch to "store"
+        charges.add(node[1] - 1) # towards the end of full hours
 
         # Only yield acceptable charges
         for c in charges:

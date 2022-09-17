@@ -90,7 +90,7 @@ class BatteryManager(hass.Hass):
 
         # Publish plan for other apps to use
         if self.publish:
-            index, values = zip(steps)
+            index, values = zip(*steps)
             series = pd.Series(values, index)
             self.global_vars[self.publish] = series
 

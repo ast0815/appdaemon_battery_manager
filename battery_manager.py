@@ -20,6 +20,7 @@ emergency_charge : Charge state at which the AC input will be enabled no matter 
 max_charge_rate : Maximum achievable charge rate with AC charging in % per hour, optional, default: 15
 mean_discharge_rate : Mean assumed discharge rate in % per hour, optional, default: 10
 round_trip_efficiency : Round trip efficiency of charge-discharge cycle, optional, default: 0.8
+publish : Variable name to publish charge plan to, optional, default: ""
 
 """
 
@@ -36,6 +37,7 @@ class BatteryManager(hass.Hass):
         self.max_charge_rate = float(self.args.get("max_charge_rate", 15))
         self.mean_discharge_rate = float(self.args.get("mean_discharge_rate", 10))
         self.round_trip_efficiency = float(self.args.get("round_trip_efficiency", 0.8))
+        self.publish = self.args.get("publish", "")
 
         self.log(
             "Loaded with configuration: %s"
@@ -84,6 +86,12 @@ class BatteryManager(hass.Hass):
         end = prices.index[-1] + pd.Timedelta(hours=1)
         target_state = (end, self.min_charge)
         steps = list(astar.astar(current_state, target_state))
+
+        # Publish plan for other apps to use
+        if self.publish:
+            index, values = zip(steps)
+            series = pd.Series(values, index)
+            self.global_vars[self.publish] = series
 
         if len(steps) < 2:
             # Something has gone wrong.

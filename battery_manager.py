@@ -83,7 +83,6 @@ class BatteryManager(hass.Hass):
             min_charge=self.min_charge,
             max_charge=self.max_charge,
         )
-        self.log(astar.min_future_prices)
         current_state = (now, charge)
         end = prices.index[-1] + pd.Timedelta(hours=1)
         target_state = (end, self.min_charge)
@@ -199,7 +198,7 @@ class AStarStrategy(AStar):
         """What is the minimum cost to get from current to goal?"""
 
         # Get minimum price
-        min_price = self.prices.min()  # TODO: Only consider relevant time range
+        min_price = self.min_future_prices.asof(current[0])
         time_diff = (goal[0] - current[0]).total_seconds() / 3600  # in hours
         charge_diff = goal[1] - current[1]
         consumption = self.mean_discharge_rate * time_diff

@@ -83,6 +83,7 @@ class BatteryManager(hass.Hass):
             min_charge=self.min_charge,
             max_charge=self.max_charge,
         )
+        self.log(astar.min_future_prices)
         current_state = (now, charge)
         end = prices.index[-1] + pd.Timedelta(hours=1)
         target_state = (end, self.min_charge)
@@ -170,7 +171,6 @@ class AStarStrategy(AStar):
 
         # Pre-calculate minimum prices for rest of time range
         self.min_future_prices = prices[::-1].expanding().min()[::-1]
-        self.log(self.min_future_prices)
 
     def distance_between(self, n1, n2):
         """Calculate the cost when transitioning from state n1 to state n2."""

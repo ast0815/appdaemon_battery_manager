@@ -115,7 +115,9 @@ class BatteryManager(hass.Hass):
             # Otherwise we would always switch to "store" towards when reaching the target level.
             # This would mess up discharging.
             if (steps[1][0] - steps[0][0]) > pd.Timedelta(minutes=10):
-                await self.store()
+                # Use 'charge' with target instead of 'store' in case the current charge level
+                # has changed while we were calculating the optimal route
+                await self.charge(next_charge)
 
     async def charge(self, target=None):
         """Charge the battery."""
@@ -246,8 +248,8 @@ class AStarStrategy(AStar):
         if self.max_charge <= max_charge:  # Make sure total max is in there
             charges.add(self.max_charge)
         charges.add(node[1])  # Make sure current charge and neighbours are in there
-        charges.add(node[1] + 1) # This ensures we do not always switch to "store"
-        charges.add(node[1] - 1) # towards the end of full hours
+        charges.add(node[1] + 1)  # This ensures we do not always switch to "store"
+        charges.add(node[1] - 1)  # towards the end of full hours
 
         # Only yield acceptable charges
         for c in charges:

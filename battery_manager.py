@@ -74,11 +74,15 @@ class BatteryManager(hass.Hass):
                 self.log("Entering emergency charge state!")
             self.emergency = True
 
+        def mean_consumption(t1, t2):
+            time_diff = (t2 - t1).total_seconds() / 3600  # in hours
+            return time_diff * self.mean_discharge_rate
+
         # Use AStar algorithm to find cheapest way
         astar = AStarStrategy(
             prices=prices,
             max_charge_rate=self.max_charge_rate,
-            mean_discharge_rate=self.mean_discharge_rate,
+            consumption_estimator=mean_cpnsumption,
             round_trip_efficiency=self.round_trip_efficiency,
             min_charge=self.min_charge,
             max_charge=self.max_charge,
@@ -152,8 +156,10 @@ class AStarStrategy(AStar):
 
     prices : Time series of electricity prices, used for transition cost estimation
     max_charge_rate : Maximum charge rate of battery in % per hour
-    mean_discharge_rate : Assumed discharge rate of battery in % per hour
+    consumption_estimator : Estimator that predicts the expected consumption (in %)
     round_trip_efficiency : Assumed round trip efficiency of charge-discharge cycle
+    min_charge : The minimum charge state to aim for
+    max_charge : The maximum charge state to aum for
 
     """
 
@@ -161,7 +167,7 @@ class AStarStrategy(AStar):
         self,
         prices,
         max_charge_rate,
-        mean_discharge_rate,
+        consumption_estimator,
         round_trip_efficiency=1.0,
         min_charge=30,
         max_charge=90,
@@ -170,7 +176,7 @@ class AStarStrategy(AStar):
 
         self.prices = prices
         self.max_charge_rate = max_charge_rate
-        self.mean_discharge_rate = mean_discharge_rate
+        self.consumption_estimator = consumption_estimator
         self.round_trip_efficiency = round_trip_efficiency
         self.min_charge = min_charge
         self.max_charge = max_charge
@@ -182,9 +188,8 @@ class AStarStrategy(AStar):
         """Calculate the cost when transitioning from state n1 to state n2."""
 
         charge_diff = n2[1] - n1[1]
-        time_diff = (n2[0] - n1[0]).total_seconds() / 3600  # in hours
         price = self.prices.asof(n1[0])
-        consumption = self.mean_discharge_rate * time_diff
+        consumption = self.consumption_estimator(n1[0], n2[0])
 
         if charge_diff < 0.0:
             # Negative charge diff means we use battery charge instead of direct AC
@@ -208,7 +213,7 @@ class AStarStrategy(AStar):
         min_price = self.min_future_prices.asof(current[0])
         time_diff = (goal[0] - current[0]).total_seconds() / 3600  # in hours
         charge_diff = goal[1] - current[1]
-        consumption = self.mean_discharge_rate * time_diff
+        consumption = self.consumption_estimator(current[0], goal[0])
 
         if time_diff < 0.0:  # Travel to the past? I do not think so.
             return np.inf
@@ -237,7 +242,8 @@ class AStarStrategy(AStar):
             hours=1
         )
         time_diff = (next_time - time).total_seconds() / 3600  # in hours
-        min_charge = int(node[1] - time_diff * self.mean_discharge_rate)
+        consumption = self.consumption_estimator(time, next_time)
+        min_charge = int(node[1] - consumption)
         max_charge = int(node[1] + time_diff * self.max_charge_rate)
 
         charges = set(range(min_charge, max_charge, 2))  # Limit number of choices

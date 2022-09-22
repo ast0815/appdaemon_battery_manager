@@ -170,7 +170,15 @@ class LookupEstimator:
         If the given time is not in the dictionary yet, it will be added.
         """
 
-        key = tuple(getattr(time, x)() for x in self.split_by)
+        key = []
+        for attr in self.split_by:
+            # Handle both attributes and methods
+            try:
+                val = getattr(time, attr)()
+            except TypeError:
+                val = getattr(time, attr)
+            key.append(val)
+        key = tuple(key)
         rate = self.discharge_dict.get(key, self.initial_guess)
         self.discharge_dict[key] = rate
         return rate

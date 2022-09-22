@@ -60,6 +60,7 @@ class BatteryManager(hass.Hass):
 
         # Charge state last time we looked
         self.last_charge = int(await self.get_state(self.charge_state_entity))
+        prices = self.global_vars["electricity_prices"]
         self.last_time = pd.Timestamp.now(tz=prices.index.tz)
 
         # Estimator of future energy consumption

@@ -67,9 +67,13 @@ class BatteryManager(hass.Hass):
         self.estimator = LookupEstimator(initial_guess=self.mean_discharge_rate)
 
         # Update battery state every 5 minutes, starting 30 seconds after the full hour
+        now = datetime.datetime.now()
+        start = now.replace(minute=0, second=30)
+        while (start - now).total_seconds() <= 0:
+            start += datetime.timedelta(minutes=5)
         self.run_every(
             self.control_battery,
-            start=datetime.datetime.now().replace(minute=0, second=30),
+            start=start,
             interval=60 * 5,
         )
 

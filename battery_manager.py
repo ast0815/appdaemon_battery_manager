@@ -68,7 +68,9 @@ class BatteryManager(hass.Hass):
 
         # Update battery state every 5 minutes, starting 30 seconds after the full hour
         self.run_every(
-            self.control_battery, start=datetime.datetime(second=30), interval=60 * 5
+            self.control_battery,
+            start=datetime.datetime.now().replace(minute=0, second=30),
+            interval=60 * 5,
         )
 
     async def is_discharging(self):

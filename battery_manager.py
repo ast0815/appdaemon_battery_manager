@@ -77,11 +77,28 @@ class BatteryManager(hass.Hass):
             interval=60 * 5,
         )
 
+        # Check for an emergency more frequently
+        self.run_minutely(self.check_emergency, datetime.time(hour=0))
+
     async def is_discharging(self):
         """Check whether the current state is discharging the battery."""
 
         state = await self.get_state(self.enable_AC_input_entity)
         return state == "off"
+
+    async def check_emergency(self, kwargs):
+        """Check that the charge is not below the emergency level.
+
+        Start charging if it is.
+        """
+
+        charge = int(await self.get_state(self.charge_state_entity))
+        threshold = self.emergency_charge
+        if charge < threshold:
+            if not self.emergency:
+                self.log("Entering emergency charge state!")
+            self.emergency = True
+            await self.store()
 
     async def control_battery(self, kwargs):
         prices = self.global_vars["electricity_prices"]
@@ -97,13 +114,6 @@ class BatteryManager(hass.Hass):
             self.estimator.learn_discharge_rate(self.last_time, charge_diff / time_diff)
         self.last_charge = charge
         self.last_time = now
-
-        # Emergency charge
-        threshold = self.emergency_charge
-        if charge < threshold:
-            if not self.emergency:
-                self.log("Entering emergency charge state!")
-            self.emergency = True
 
         # Use AStar algorithm to find cheapest way
         astar = AStarStrategy(
@@ -130,7 +140,7 @@ class BatteryManager(hass.Hass):
         if len(steps) < 2:
             # Something has gone wrong.
             self.log("Less than two states in the optimal path!")
-            self.store()
+            await self.store()
             return
 
         next_charge = steps[1][1]

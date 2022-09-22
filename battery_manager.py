@@ -3,6 +3,7 @@ import datetime
 import numpy as np
 import pandas as pd
 from astar import AStar
+from functools import lru_cache
 
 """App to control batteries charging and discharging based on elecricity prices.
 
@@ -90,7 +91,7 @@ class BatteryManager(hass.Hass):
         target_state = (end, self.min_charge)
         steps = list(astar.astar(current_state, target_state))
 
-        self.log(estimation.discharge_dict)
+        self.log(estimator.discharge_dict)
 
         # Publish plan for other apps to use
         if self.publish:
@@ -164,6 +165,7 @@ class LookupEstimator:
         self.initial_guess = initial_guess
         self.split_by = split_by
 
+    @lru_cache(maxsize=48)
     def get_discharge_rate(self, time):
         """Get the expected discharge rate at the given time.
 
@@ -183,6 +185,7 @@ class LookupEstimator:
         self.discharge_dict[key] = rate
         return rate
 
+    @lru_cache(maxsize=128)
     def __call__(self, t1, t2):
         """Estimate the consumption between the two given times."""
 

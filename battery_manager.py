@@ -188,7 +188,7 @@ class LookupEstimator:
 
         sample_points = pd.date_range(start=t1, end=t2, periods=20, inclusive="left")
         rates = sample_points.map(self.get_discharge_rate)
-        mean_rate = rates.mean()
+        mean_rate = rates.array.mean()
         time_diff = (t2 - t1).total_seconds() / 3600  # in hours
 
         return mean_rate * time_diff

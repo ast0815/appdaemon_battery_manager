@@ -58,30 +58,51 @@ class BatteryManager(hass.Hass):
         # Are we in emergency charge mode?
         self.emergency = False
 
-        # Update battery state every minute
-        self.run_minutely(self.control_battery, datetime.time(minute=0, second=1))
+        # Charge state last time we looked
+        self.last_charge = int(await self.get_state(self.charge_state_entity))
+        self.last_time = pd.Timestamp.now(tz=prices.index.tz)
+
+        # Estimator of future energy consumption
+        self.estimator = LookupEstimator(initial_guess=self.mean_discharge_rate)
+
+        # Update battery state every 5 minutes, starting 30 seconds after the full hour
+        self.run_every(
+            self.control_battery, start=datetime.datetime(second=30), interval=60 * 5
+        )
+
+    def is_discharging(self):
+        """Check whether the current state is discharging the battery."""
+
+        state = await self.get_state(self.enable_AC_input_entity)
+        return state == "off"
 
     async def control_battery(self, kwargs):
         prices = self.global_vars["electricity_prices"]
 
         now = pd.Timestamp.now(tz=prices.index.tz)
         current_price = prices.asof(now)
+        charge = int(await self.get_state(self.charge_state_entity))
+
+        # Learn how fast we discharge
+        if self.is_discharging():
+            charge_diff = self.last_charge - charge
+            time_diff = (now - self.last_time).total_seconds() / 3600 # in hours
+            self.estimator.learn_discharge_rate(now, charge_diff /time_diff)
+        self.last_charge = charge
+        self.last_time = now
 
         # Emergency charge
         threshold = self.emergency_charge
-        charge = int(await self.get_state(self.charge_state_entity))
         if charge < threshold:
             if not self.emergency:
                 self.log("Entering emergency charge state!")
             self.emergency = True
 
-        estimator = LookupEstimator(initial_guess=self.mean_discharge_rate)
-
         # Use AStar algorithm to find cheapest way
         astar = AStarStrategy(
             prices=prices,
             max_charge_rate=self.max_charge_rate,
-            consumption_estimator=estimator,
+            consumption_estimator=self.estimator,
             round_trip_efficiency=self.round_trip_efficiency,
             min_charge=self.min_charge,
             max_charge=self.max_charge,
@@ -161,13 +182,9 @@ class LookupEstimator:
         self.initial_guess = initial_guess
         self.split_by = split_by
 
-    @lru_cache(maxsize=48)
-    def get_discharge_rate(self, time):
-        """Get the expected discharge rate at the given time.
-
-        If the given time is not in the dictionary yet, it will be added.
-        """
-
+    @lru_cache()
+    def get_key(self, time):
+        """Build the dictionary key from a given time."""
         key = []
         for attr in self.split_by:
             # Handle both attributes and methods
@@ -177,15 +194,35 @@ class LookupEstimator:
                 val = getattr(time, attr)
             key.append(val)
         key = tuple(key)
+        return key
+
+    def get_discharge_rate(self, time):
+        """Get the expected discharge rate at the given time.
+
+        If the given time is not in the dictionary yet, it will be added.
+        """
+
+        key = self.get_key(time)
         rate = self.discharge_dict.get(key, self.initial_guess)
         self.discharge_dict[key] = rate
         return rate
 
-    @lru_cache(maxsize=128)
+    def learn_discharge_rate(self, time, rate):
+        """Use the given measurement to improve future estimates."""
+
+        key = self.get_key(time)
+        old_rate = self.discharge_dict.get(key, self.initial_guess)
+        new_rate = 0.9 * old_rate + 0.1 * rate
+        self.discharge_dict[key] = new_rate
+
+        # Clear cache since now values can be different
+        self.__call__.clear_cache()
+
+    @lru_cache()
     def __call__(self, t1, t2):
         """Estimate the consumption between the two given times."""
 
-        sample_points = pd.date_range(start=t1, end=t2, periods=20, inclusive="left")
+        sample_points = pd.date_range(start=t1, end=t2, freq="H", inclusive="left")
         rates = sample_points.map(self.get_discharge_rate)
         mean_rate = rates.array.mean()
         time_diff = (t2 - t1).total_seconds() / 3600  # in hours

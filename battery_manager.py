@@ -223,7 +223,7 @@ class LookupEstimator:
         self.discharge_dict[key] = new_rate
 
         # Clear cache since now values can be different
-        self.__call__.clear_cache()
+        self.__call__.cache_clear()
 
     @lru_cache()
     def __call__(self, t1, t2):

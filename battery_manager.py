@@ -90,7 +90,7 @@ class BatteryManager(hass.Hass):
         if await self.is_discharging():
             charge_diff = self.last_charge - charge
             time_diff = (now - self.last_time).total_seconds() / 3600  # in hours
-            self.estimator.learn_discharge_rate(now, charge_diff / time_diff)
+            self.estimator.learn_discharge_rate(self.last_time, charge_diff / time_diff)
         self.last_charge = charge
         self.last_time = now
 

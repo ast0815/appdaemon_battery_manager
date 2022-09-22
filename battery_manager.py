@@ -115,13 +115,9 @@ class BatteryManager(hass.Hass):
         elif next_charge < charge:
             await self.discharge()
         else:
-            # Only switch to "store" if next step is longer than 10 minutes in the future.
-            # Otherwise we would always switch to "store" towards when reaching the target level.
-            # This would mess up discharging.
-            if (steps[1][0] - steps[0][0]) > pd.Timedelta(minutes=10):
-                # Use 'charge' with target instead of 'store' in case the current charge level
-                # has changed while we were calculating the optimal route
-                await self.charge(next_charge)
+            # Use 'charge' with target instead of 'store' in case the current charge level
+            # has changed while we were calculating the optimal route
+            await self.charge(next_charge)
 
     async def charge(self, target=None):
         """Charge the battery."""

@@ -115,7 +115,7 @@ class BatteryManager(hass.Hass):
         target_state = (end, self.min_charge)
         steps = list(astar.astar(current_state, target_state))
 
-        self.log(estimator.discharge_dict)
+        self.log(self.estimator.discharge_dict)
 
         # Publish plan for other apps to use
         if self.publish:

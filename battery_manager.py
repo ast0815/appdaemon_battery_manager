@@ -74,9 +74,7 @@ class BatteryManager(hass.Hass):
                 self.log("Entering emergency charge state!")
             self.emergency = True
 
-        def mean_consumption(t1, t2):
-            time_diff = (t2 - t1).total_seconds() / 3600  # in hours
-            return time_diff * self.mean_discharge_rate
+        estimator = LookupEstimator(initial_guess=self.mean_discharge_rate)
 
         # Use AStar algorithm to find cheapest way
         astar = AStarStrategy(
@@ -91,6 +89,8 @@ class BatteryManager(hass.Hass):
         end = prices.index[-1] + pd.Timedelta(hours=1)
         target_state = (end, self.min_charge)
         steps = list(astar.astar(current_state, target_state))
+
+        self.log(estimation.discharge_dict)
 
         # Publish plan for other apps to use
         if self.publish:
@@ -146,6 +146,44 @@ class BatteryManager(hass.Hass):
         """Discharge the battery."""
 
         await self.turn_off(self.enable_AC_input_entity)
+
+
+class LookupEstimator:
+    """Look up expected consumption rates in table.
+
+    Arguments
+    ---------
+
+    initial_guess : Discharge rate to populate the table with
+    split_by : What datetime attributes to use for distinction
+
+    """
+
+    def __init__(self, initial_guess, split_by=("hour",)):
+        self.discharge_dict = {}
+        self.initial_guess = initial_guess
+        self.split_by = split_by
+
+    def get_discharge_rate(self, time):
+        """Get the expected discharge rate at the given time.
+
+        If the given time is not in the dictionary yet, it will be added.
+        """
+
+        key = tuple(getattr(time, x)() for x in self.split_by)
+        rate = self.discharge_dict.get(key, self.initial_guess)
+        self.discharge_dict[key] = rate
+        return rate
+
+    def __call__(self, t1, t2):
+        """Estimate the consumption between the two given times."""
+
+        sample_points = ps.date_range(start=t1, stop=t2, periods=20, include="left")
+        rates = sample_points.map(self.get_discharge_rate)
+        mean_rate = rates.mean()
+        time_diff = (t2 - t1).total_seconds() / 3600  # in hours
+
+        return mean_rate * time_diff
 
 
 class AStarStrategy(AStar):

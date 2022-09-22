@@ -70,7 +70,7 @@ class BatteryManager(hass.Hass):
             self.control_battery, start=datetime.datetime(second=30), interval=60 * 5
         )
 
-    def is_discharging(self):
+    async def is_discharging(self):
         """Check whether the current state is discharging the battery."""
 
         state = await self.get_state(self.enable_AC_input_entity)
@@ -84,7 +84,7 @@ class BatteryManager(hass.Hass):
         charge = int(await self.get_state(self.charge_state_entity))
 
         # Learn how fast we discharge
-        if self.is_discharging():
+        if await self.is_discharging():
             charge_diff = self.last_charge - charge
             time_diff = (now - self.last_time).total_seconds() / 3600  # in hours
             self.estimator.learn_discharge_rate(now, charge_diff / time_diff)

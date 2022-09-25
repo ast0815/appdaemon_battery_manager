@@ -210,13 +210,13 @@ class LookupEstimator:
     def load_stats(self, filename):
         """Load stats from file."""
 
-        with open(filename, "r") as f:
+        with open(filename, "rb") as f:
             self.discharge_dict = pickle.load(f)
 
     def save_stats(self, filename):
         """Save stats to file."""
 
-        with open(filename, "w") as f:
+        with open(filename, "wb") as f:
             pickle.dump(self.discharge_dict, f)
 
     @lru_cache()

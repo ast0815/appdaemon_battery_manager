@@ -47,10 +47,8 @@ class BatteryManager(hass.Hass):
         self.round_trip_efficiency = float(self.args.get("round_trip_efficiency", 0.8))
         self.publish = self.args.get("publish", "")
         self.save_file = self.args.get("save_file", "")
-        self.learning_attributes = (
-            self.args.get("learning_attributes", ["weekday", "hour"]),
-        )
-        self.learning_factor = (self.args.get("learning_factor", 0.05),)
+        self.learning_attributes = self.args.get("learning_attributes", ["weekday", "hour"]),
+        self.learning_factor = self.args.get("learning_factor", 0.05)
 
         self.log(
             "Loaded with configuration: %s"

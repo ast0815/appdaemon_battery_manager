@@ -83,7 +83,11 @@ class BatteryManager(hass.Hass):
             update_speed=self.learning_factor,
         )
         if self.save_file and os.path.exists(self.save_file):
-            self.estimator.load_stats(self.save_file)
+            try:
+                self.estimator.load_stats(self.save_file)
+            except Exception as e:
+                self.log(f"Failed to load stats from file {self.save_file}")
+                self.log(e)
 
         # Update battery state every 5 minutes, starting 30 seconds after the full hour
         now = datetime.datetime.now()

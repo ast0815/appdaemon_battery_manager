@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 from astar import AStar
 from functools import lru_cache
+import pickle
+import os
 
 """App to control batteries charging and discharging based on elecricity prices.
 
@@ -22,6 +24,7 @@ max_charge_rate : Maximum achievable charge rate with AC charging in % per hour,
 mean_discharge_rate : Mean assumed discharge rate in % per hour, optional, default: 10
 round_trip_efficiency : Round trip efficiency of charge-discharge cycle, optional, default: 0.8
 publish : Variable name to publish charge plan to, optional, default: ""
+save_file : Path to file to store statistics for better predictions
 
 """
 
@@ -39,6 +42,7 @@ class BatteryManager(hass.Hass):
         self.mean_discharge_rate = float(self.args.get("mean_discharge_rate", 10))
         self.round_trip_efficiency = float(self.args.get("round_trip_efficiency", 0.8))
         self.publish = self.args.get("publish", "")
+        self.save_file = self.args.get("save_file", "")
 
         self.log(
             "Loaded with configuration: %s"
@@ -65,6 +69,8 @@ class BatteryManager(hass.Hass):
 
         # Estimator of future energy consumption
         self.estimator = LookupEstimator(initial_guess=self.mean_discharge_rate)
+        if self.save_file and os.path.exists(self.save_file):
+            self.estimator.load_stats(self.save_file)
 
         # Update battery state every 5 minutes, starting 30 seconds after the full hour
         now = datetime.datetime.now()
@@ -112,6 +118,8 @@ class BatteryManager(hass.Hass):
             charge_diff = self.last_charge - charge
             time_diff = (now - self.last_time).total_seconds() / 3600  # in hours
             self.estimator.learn_discharge_rate(self.last_time, charge_diff / time_diff)
+            if self.save_file:
+                self.estimator.save_stats(self.save_file)
         self.last_charge = charge
         self.last_time = now
 
@@ -198,6 +206,18 @@ class LookupEstimator:
         self.discharge_dict = {}
         self.initial_guess = initial_guess
         self.split_by = split_by
+
+    def load_stats(self, filename):
+        """Load stats from file."""
+
+        with open(filename, "r") as f:
+            self.discharge_dict = pickle.load(f)
+
+    def save_stats(self, filename):
+        """Save stats to file."""
+
+        with open(filename, "w") as f:
+            pickle.dump(self.discharge_dict, f)
 
     @lru_cache()
     def get_key(self, time):

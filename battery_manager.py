@@ -24,7 +24,11 @@ max_charge_rate : Maximum achievable charge rate with AC charging in % per hour,
 mean_discharge_rate : Mean assumed discharge rate in % per hour, optional, default: 10
 round_trip_efficiency : Round trip efficiency of charge-discharge cycle, optional, default: 0.8
 publish : Variable name to publish charge plan to, optional, default: ""
-save_file : Path to file to store statistics for better predictions
+save_file : Path to file to store statistics for better predictionsa, optional, default: ""
+learning_attributes : Attributes and methods of the `datetime` to use to learn better predictions,
+    optional, default: ['weekday', 'hour']
+learning_factor : Speed at which to update assumed energy consumption with measurements,
+    optional, default: 0.05
 
 """
 
@@ -43,6 +47,10 @@ class BatteryManager(hass.Hass):
         self.round_trip_efficiency = float(self.args.get("round_trip_efficiency", 0.8))
         self.publish = self.args.get("publish", "")
         self.save_file = self.args.get("save_file", "")
+        self.learning_attributes = (
+            self.args.get("learning_attributes", ["weekday", "hour"]),
+        )
+        self.learning_factor = (self.args.get("learning_factor", 0.05),)
 
         self.log(
             "Loaded with configuration: %s"
@@ -55,6 +63,9 @@ class BatteryManager(hass.Hass):
                     "Mean Discharge Rate": self.mean_discharge_rate,
                     "Round-Trip Efficiency": self.round_trip_efficiency,
                     "Publish": self.publish,
+                    "Save File": self.save_file,
+                    "Learning Attributes": self.learning_attributes,
+                    "Learning Factor": self.learning_factor,
                 },
             )
         )
@@ -68,7 +79,11 @@ class BatteryManager(hass.Hass):
         self.last_time = pd.Timestamp.now(tz=prices.index.tz)
 
         # Estimator of future energy consumption
-        self.estimator = LookupEstimator(initial_guess=self.mean_discharge_rate)
+        self.estimator = LookupEstimator(
+            initial_guess=self.mean_discharge_rate,
+            split_by=self.learning_attributes,
+            update_speed=self.learning_factor,
+        )
         if self.save_file and os.path.exists(self.save_file):
             self.estimator.load_stats(self.save_file)
 
@@ -202,10 +217,11 @@ class LookupEstimator:
 
     """
 
-    def __init__(self, initial_guess, split_by=("hour",)):
+    def __init__(self, initial_guess, split_by=("hour",), update_speed=0.1):
         self.discharge_dict = {}
         self.initial_guess = initial_guess
-        self.split_by = split_by
+        self.split_by = tuple(split_by)
+        self.update_speed = update_speed
 
     def load_stats(self, filename):
         """Load stats from file."""
@@ -249,7 +265,7 @@ class LookupEstimator:
 
         key = self.get_key(time)
         old_rate = self.discharge_dict.get(key, self.initial_guess)
-        new_rate = 0.9 * old_rate + 0.1 * rate
+        new_rate = (1.0 - self.update_speed) * old_rate + self.update_speed * rate
         self.discharge_dict[key] = new_rate
 
         # Clear cache since now values can be different

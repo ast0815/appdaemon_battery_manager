@@ -47,7 +47,9 @@ class BatteryManager(hass.Hass):
         self.round_trip_efficiency = float(self.args.get("round_trip_efficiency", 0.8))
         self.publish = self.args.get("publish", "")
         self.save_file = self.args.get("save_file", "")
-        self.learning_attributes = self.args.get("learning_attributes", ["weekday", "hour"])
+        self.learning_attributes = self.args.get(
+            "learning_attributes", ["weekday", "hour"]
+        )
         self.learning_factor = self.args.get("learning_factor", 0.05)
 
         self.log(
@@ -81,6 +83,7 @@ class BatteryManager(hass.Hass):
             initial_guess=self.mean_discharge_rate,
             split_by=self.learning_attributes,
             update_speed=self.learning_factor,
+            debug=self.log,
         )
         if self.save_file and os.path.exists(self.save_file):
             try:
@@ -216,14 +219,22 @@ class LookupEstimator:
 
     initial_guess : Discharge rate to populate the table with
     split_by : What datetime attributes to use for distinction
+    update_speed : Relative weight of each new consumption measurement
+    debug : Function used to log debug messages
 
     """
 
-    def __init__(self, initial_guess, split_by=("hour",), update_speed=0.1):
+    def __init__(self, initial_guess, split_by=("hour",), update_speed=0.1, debug=None):
         self.discharge_dict = {}
         self.initial_guess = initial_guess
         self.split_by = tuple(split_by)
         self.update_speed = update_speed
+        if debug is None:
+
+            def debug(message):
+                pass
+
+        self.debug = debug
 
     def load_stats(self, filename):
         """Load stats from file."""
@@ -277,7 +288,9 @@ class LookupEstimator:
     def __call__(self, t1, t2):
         """Estimate the consumption between the two given times."""
 
+        self.debug((t1, t2))
         sample_points = pd.date_range(start=t1, end=t2, freq="H", inclusive="left")
+        self.debug(sample_points)
         rates = sample_points.map(self.get_discharge_rate)
         mean_rate = rates.array.mean()
         time_diff = (t2 - t1).total_seconds() / 3600  # in hours

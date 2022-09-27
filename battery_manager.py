@@ -83,7 +83,6 @@ class BatteryManager(hass.Hass):
             initial_guess=self.mean_discharge_rate,
             split_by=self.learning_attributes,
             update_speed=self.learning_factor,
-            debug=self.log,
         )
         if self.save_file and os.path.exists(self.save_file):
             try:
@@ -312,6 +311,7 @@ class AStarStrategy(AStar):
     round_trip_efficiency : Assumed round trip efficiency of charge-discharge cycle
     min_charge : The minimum charge state to aim for
     max_charge : The maximum charge state to aum for
+    debug : Function to log debug messages, optional
 
     """
 
@@ -323,6 +323,7 @@ class AStarStrategy(AStar):
         round_trip_efficiency=1.0,
         min_charge=30,
         max_charge=90,
+        debug=None,
     ):
         super().__init__()
 
@@ -333,8 +334,22 @@ class AStarStrategy(AStar):
         self.min_charge = min_charge
         self.max_charge = max_charge
 
+        if debug is None:
+
+            def debug(message):
+                pass
+
+        self.debug = debug
+
         # Pre-calculate minimum prices for rest of time range
         self.min_future_prices = prices[::-1].expanding().min()[::-1]
+
+        self.debug(
+            f"""Prices:
+            {self.prices}
+            Min prices:
+            {self.min_future_prices}"""
+        )
 
     def distance_between(self, n1, n2):
         """Calculate the cost when transitioning from state n1 to state n2."""

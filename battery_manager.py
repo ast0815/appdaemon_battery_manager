@@ -151,13 +151,12 @@ class BatteryManager(hass.Hass):
             round_trip_efficiency=self.round_trip_efficiency,
             min_charge=self.min_charge,
             max_charge=self.max_charge,
+            debug=self.log,
         )
         current_state = (now, charge)
         end = prices.index[-1] + pd.Timedelta(hours=1)
         target_state = (end, self.min_charge)
         steps = list(astar.astar(current_state, target_state))
-
-        self.log(self.estimator.discharge_dict)
 
         # Publish plan for other apps to use
         if self.publish:

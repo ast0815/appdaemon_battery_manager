@@ -348,7 +348,9 @@ class AStarStrategy(AStar):
             f"""Prices:
             {self.prices}
             Min prices:
-            {self.min_future_prices}"""
+            {self.min_future_prices}
+            Test {self.prices.index[3]}:
+            {self.min_future_prices.asof(self.prices.index[3])}"""
         )
 
     def distance_between(self, n1, n2):

@@ -288,9 +288,11 @@ class LookupEstimator:
     def __call__(self, t1, t2):
         """Estimate the consumption between the two given times."""
 
-        self.debug((t1, t2))
         sample_points = pd.date_range(start=t1, end=t2, freq="H", inclusive="left")
-        self.debug(sample_points)
+        self.debug(f"""Estimating consumption between {t1} and {t2}.
+        Using sample points:
+        {sample_points}
+        """
         rates = sample_points.map(self.get_discharge_rate)
         mean_rate = rates.array.mean()
         time_diff = (t2 - t1).total_seconds() / 3600  # in hours

@@ -142,14 +142,23 @@ class BatteryManager(hass.Hass):
         now = pd.Timestamp.now(tz=prices.index.tz)
         current_price = prices.asof(now)
         charge = int(await self.get_state(self.charge_state_entity))
+        target = int(await self.get_state(self.charge_control_entity))
+        charge_diff = charge - self.last_charge
+        time_diff = (now - self.last_time).total_seconds() / 3600  # in hours
 
-        # Learn how fast we discharge
         if await self.is_discharging():
-            charge_diff = self.last_charge - charge
-            time_diff = (now - self.last_time).total_seconds() / 3600  # in hours
-            self.estimator.learn_discharge_rate(self.last_time, charge_diff / time_diff)
+            # Learn how fast we discharge
+            self.estimator.learn_discharge_rate(
+                self.last_time, -charge_diff / time_diff
+            )
             if self.save_file:
                 self.estimator.save_stats(self.save_file)
+        elif charge < target:
+            # We are probably charging
+            # Slowly learn how fast we charge
+            self.max_charge_rate *= 0.999
+            self.max_charge_rate += 0.001 * charge_diff / time_diff
+
         self.last_charge = charge
         self.last_time = now
 

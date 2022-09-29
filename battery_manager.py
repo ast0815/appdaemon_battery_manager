@@ -29,6 +29,7 @@ learning_attributes : Attributes and methods of the `datetime` to use to learn b
     optional, default: ['weekday', 'hour']
 learning_factor : Speed at which to update assumed energy consumption with measurements,
     optional, default: 0.05
+enable_control: Entity used to switch on or off the battery control, optional
 
 """
 
@@ -37,6 +38,7 @@ class BatteryManager(hass.Hass):
     async def initialize(self):
         # Set configuration
         self.enable_AC_input_entity = self.args["AC_input"]
+        self.enable_control_entity = self.args.get("enable_control", None)
         self.charge_control_entity = self.args["charge_control"]
         self.charge_state_entity = self.args["charge_state"]
         self.max_charge = int(self.args.get("max_charge", 90))
@@ -126,6 +128,15 @@ class BatteryManager(hass.Hass):
             await self.store()
 
     async def control_battery(self, kwargs):
+        """Callback function to actually control the battery."""
+
+        # Do nothing if battery control is swtiched off
+        if (
+            self.enable_control_entity is not None
+            and self.get_state(self.enable_control_entity) == "off"
+        ):
+            return
+
         prices = self.global_vars["electricity_prices"]
 
         now = pd.Timestamp.now(tz=prices.index.tz)

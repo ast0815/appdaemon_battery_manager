@@ -133,7 +133,7 @@ class BatteryManager(hass.Hass):
         # Do nothing if battery control is swtiched off
         if (
             self.enable_control_entity is not None
-            and self.get_state(self.enable_control_entity) == "off"
+            and await self.get_state(self.enable_control_entity) == "off"
         ):
             return
 

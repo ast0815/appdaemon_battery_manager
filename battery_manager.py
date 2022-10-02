@@ -436,8 +436,8 @@ class AStarStrategy(AStar):
         max_charge = int(node[1] + time_diff * self.max_charge_rate)
 
         # Limit number of choices by 5 minute resolution
-        charge_step = self.max_charge_rate / 12  # 12 5 minute steps per hour
-        discharge_step = consumption / time_diff / 12
+        charge_step = self.max_charge_rate // 12  # 12 5 minute steps per hour
+        discharge_step = (consumption / time_diff) // 12
         if charge_step < 1:
             charge_step = 1
         if discharge_step < 1:

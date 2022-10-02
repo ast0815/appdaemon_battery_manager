@@ -435,8 +435,17 @@ class AStarStrategy(AStar):
         min_charge = int(node[1] - consumption)
         max_charge = int(node[1] + time_diff * self.max_charge_rate)
 
-        charges = set(range(min_charge, max_charge, 2))  # Limit number of choices
+        # Limit number of choices by 5 minute resolution
+        charge_step = self.max_charge_rate / 12  # 12 5 minute steps per hour
+        discharge_step = consumption / time_diff / 12
+        if charge_step < 1:
+            charge_step = 1
+        if discharge_step < 1:
+            discharge_step = 1
+        charges = set(range(node[1], min_charge, -discharge_step))
+        charges.update(range(node[1], max_charge, charge_step))
         charges.add(max_charge)  # Make sure max is in there
+        charges.add(min_charge)  # Make sure min is in there
         if self.min_charge >= min_charge:  # Make sure total min is in there
             charges.add(self.min_charge)
         if self.max_charge <= max_charge:  # Make sure total max is in there

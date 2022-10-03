@@ -368,15 +368,6 @@ class AStarStrategy(AStar):
         # Pre-calculate minimum prices for rest of time range
         self.min_future_prices = prices[::-1].expanding().min()[::-1]
 
-        self.debug(
-            f"""Prices:
-            {self.prices}
-            Min prices:
-            {self.min_future_prices}
-            Test {self.prices.index[3]}:
-            {self.min_future_prices.asof(self.prices.index[3])}"""
-        )
-
     def distance_between(self, n1, n2):
         """Calculate the cost when transitioning from state n1 to state n2."""
 

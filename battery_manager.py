@@ -297,6 +297,10 @@ class LookupEstimator:
         key = self.get_key(time)
         old_rate = self.discharge_dict.get(key, self.initial_guess)
         new_rate = (1.0 - self.update_speed) * old_rate + self.update_speed * rate
+        if new_rate < 1.0:
+            # Make sure we assume a minimum amount of discharge
+            # Otherwise the algorithms might break
+            new_rate = 1.0
         self.discharge_dict[key] = new_rate
 
         # Clear cache since now values can be different

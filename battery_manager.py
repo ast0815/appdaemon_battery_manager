@@ -179,7 +179,9 @@ class BatteryManager(hass.Hass):
         current_state = (now, charge)
         end = prices.index[-1] + pd.Timedelta(hours=1)
         target_state = (end, self.min_charge)
-        steps = list(astar.astar(current_state, target_state))
+        steps = list(
+            await self.run_in_executor(astar.astar, current_state, target_state)
+        )
 
         # Publish plan for other apps to use
         if self.publish:

@@ -439,7 +439,11 @@ class AStarStrategy(AStar):
         time_diff = (next_time - time).total_seconds() / 3600  # in hours
         consumption = self.consumption_estimator(time, next_time)
         min_charge = int(node[1] - consumption)
+        if min_charge < 0:
+            min_charge = 0
         max_charge = int(node[1] + time_diff * self.max_charge_rate)
+        if max_charge > 100:
+            max_charge = 100
 
         # Limit number of choices by 5 minute resolution
         charge_step = int(self.max_charge_rate / 12)  # 12 5 minute steps per hour
@@ -468,6 +472,6 @@ class AStarStrategy(AStar):
             elif c == min_charge and c >= self.undershoot and c <= self.max_charge:
                 # Allow uninterrupted discharge down to undershoot level
                 yield (next_time, c)
-            elif c == max_charge and c >= self.undershoot and c <= self.max_charge:
+            elif c == max_charge and c <= self.max_charge:
                 # Always allow uninterrupted charge
                 yield (next_time, c)

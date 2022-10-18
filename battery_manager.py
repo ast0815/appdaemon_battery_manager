@@ -472,6 +472,9 @@ class AStarStrategy(AStar):
                 yield (next_time, c)
             elif c == min_charge and c >= self.undershoot and c <= self.max_charge:
                 # Allow uninterrupted discharge down to undershoot level
+                if c == node[1]:
+                    # Do not allow remaining at undershoot level
+                    continue
                 yield (next_time, c)
             elif c == max_charge and c <= self.max_charge:
                 # Always allow uninterrupted charge

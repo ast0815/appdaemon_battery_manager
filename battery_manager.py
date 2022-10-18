@@ -116,7 +116,7 @@ class BatteryManager(hass.Hass):
 
     async def charge_change_callback(self, entity, attribute, old, new, kwargs):
         """Called whenever the charge state changes."""
-        self.log(f"Charge state changed: {old} -> {new}")
+        await self.check_emergency({})
 
     async def is_discharging(self):
         """Check whether the current state is discharging the battery."""

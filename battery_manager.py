@@ -110,6 +110,14 @@ class BatteryManager(hass.Hass):
         # Check for an emergency more frequently
         self.run_minutely(self.check_emergency, datetime.time(hour=0))
 
+        # Also additionally check for emergencies on charge state changes
+        entity = await self.get_entity(self.charge_state_entity)
+        entity.listen_state(self.charge_change_callback)
+
+    async def charge_change_callback(self, entity, attribute, old, new, kwargs):
+        """Called whenever the charge state changes."""
+        self.log(f"Charge state changed: {old} -> {new}")
+
     async def is_discharging(self):
         """Check whether the current state is discharging the battery."""
 

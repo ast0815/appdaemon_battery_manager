@@ -421,7 +421,7 @@ class AStarStrategy(AStar):
         if consumption < 0.0:
             consumption = 0.0
 
-        cost = consumption * min_price
+        cost = consumption * min_price * 0.9
         return cost
 
     def neighbors(self, node):

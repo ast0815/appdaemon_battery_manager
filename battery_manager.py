@@ -421,6 +421,7 @@ class AStarStrategy(AStar):
         if consumption < 0.0:
             consumption = 0.0
 
+        # Degrade the estiamte to make sure it is always lower than the real cost.
         cost = consumption * min_price * 0.9
         return cost
 

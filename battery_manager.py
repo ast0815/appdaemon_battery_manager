@@ -37,6 +37,9 @@ enable_control: Entity used to switch on or off the battery control, optional
 
 class BatteryManager(hass.Hass):
     async def initialize(self):
+        # Unpin the app, so long Astar calculations do not block other callbacks
+        await self.set_app_pin(False)
+
         # Set configuration
         self.enable_AC_input_entity = self.args["AC_input"]
         self.enable_control_entity = self.args.get("enable_control", None)

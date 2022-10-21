@@ -83,8 +83,11 @@ class BatteryManager(hass.Hass):
 
         # Charge state last time we looked
         self.last_charge = int(await self.get_state(self.charge_state_entity))
-        prices = self.global_vars["electricity_prices"]
-        self.last_time = pd.Timestamp.now(tz=prices.index.tz)
+        prices = self.global_vars.get("electricity_prices", None)
+        if prices is None:
+            self.last_time = pd.Timestamp.now(tz="UTC")
+        else:
+            self.last_time = pd.Timestamp.now(tz=prices.index.tz)
 
         # Estimator of future energy consumption
         self.estimator = LookupEstimator(
@@ -151,7 +154,12 @@ class BatteryManager(hass.Hass):
         ):
             return
 
-        prices = self.global_vars["electricity_prices"]
+        prices = self.global_vars.get("electricity_prices", None)
+        if prices is None:
+            # No prices? nothing to do
+            self.log("No prices available! Switching to store mode.")
+            await self.store()
+            return
 
         now = pd.Timestamp.now(tz=prices.index.tz)
         current_price = prices.asof(now)

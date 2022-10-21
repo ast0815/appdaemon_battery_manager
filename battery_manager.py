@@ -155,7 +155,7 @@ class BatteryManager(hass.Hass):
             return
 
         prices = self.global_vars.get("electricity_prices", None)
-        if prices is None:
+        if prices is None or len(prices) == 0:
             # No prices? nothing to do
             self.log("No prices available! Switching to store mode.")
             await self.store()

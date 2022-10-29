@@ -22,6 +22,8 @@ min_charge : Minimum charge target to set, optional, default: 30
 undershoot_charge : Minimum charge to discharge to, optional, default: 30
 emergency_charge : Charge state at which the AC input will be enabled no matter what, optional, default: 10
 max_charge_rate : Maximum achievable charge rate with AC charging in % per hour, optional, default: 15
+alt_max_charge_rate : Alternative maximum achievable charge rate with AC charging in % per hour, enabled with alt_rate_enable switch entity, optional, default: 15
+alt_rate_control : Switch entity to enable the alternative charge rate, optional
 mean_discharge_rate : Mean assumed discharge rate in % per hour, optional, default: 10
 round_trip_efficiency : Round trip efficiency of charge-discharge cycle, optional, default: 0.8
 publish : Variable name to publish charge plan to, optional, default: ""
@@ -50,6 +52,8 @@ class BatteryManager(hass.Hass):
         self.undershoot_charge = int(self.args.get("undershoot_charge", 30))
         self.emergency_charge = int(self.args.get("emergency_charge", 10))
         self.max_charge_rate = float(self.args.get("max_charge_rate", 15))
+        self.alt_max_charge_rate = float(self.args.get("alt_max_charge_rate", 15))
+        self.enable_alt_rate_entity = self.args.get("alt_rate_control", "")
         self.mean_discharge_rate = float(self.args.get("mean_discharge_rate", 10))
         self.round_trip_efficiency = float(self.args.get("round_trip_efficiency", 0.8))
         self.publish = self.args.get("publish", "")
@@ -214,6 +218,9 @@ class BatteryManager(hass.Hass):
             await self.store()
             return
 
+        next_step = steps[1]
+        self.set_charge_rate(current_state, next_step)
+
         next_charge = steps[1][1]
         if next_charge > charge:
             self.emergency = False
@@ -227,6 +234,27 @@ class BatteryManager(hass.Hass):
             # Use 'charge' with target instead of 'store' in case the current charge level
             # has changed while we were calculating the optimal route
             await self.charge(next_charge)
+
+    async def set_charge_rate(self, now_state, target_state):
+        """Set the alternative charge rate if appropriate."""
+
+        if not self.enable_alt_rate_entity:
+            # Nothing we can do
+            return
+
+        charge_diff = target_state[1] - now_state[1]
+        time_diff = (target_state[0] - now_state[0]).total_seconds() / 3600  # in hours
+
+        target_rate = charge_diff / time_diff
+
+        if self.alt_max_charge_rate <= target_rate <= self.max_charge_rate:
+            await self.turn_off(self.enable_alt_rate_entity)
+        elif self.alt_max_charge_rate >= target_rate >= self.max_charge_rate:
+            await self.turn_on(self.enable_alt_rate_entity)
+        elif target_rate <= self.alt_max_charge_rate <= self.max_charge_rate:
+            await self.turn_on(self.enable_alt_rate_entity)
+        elif target_rate <= self.max_charge_rate <= self.alt_max_charge_rate:
+            await self.turn_off(self.enable_alt_rate_entity)
 
     async def charge(self, target=None):
         """Charge the battery."""
@@ -377,11 +405,15 @@ class AStarStrategy(AStar):
         max_charge=90,
         undershoot=30,
         debug=None,
+        alt_max_charge_rate=None,
     ):
         super().__init__()
 
         self.prices = prices
         self.max_charge_rate = max_charge_rate
+        if alt_max_charge_rate is None:
+            alt_max_charge_rate = max_charge_rate
+        self.alt_max_charge_rate = alt_max_charge_rate
         self.consumption_estimator = consumption_estimator
         self.round_trip_efficiency = round_trip_efficiency
         self.min_charge = min_charge
@@ -462,8 +494,16 @@ class AStarStrategy(AStar):
         if min_charge < 0:
             min_charge = 0
         max_charge = int(node[1] + time_diff * self.max_charge_rate)
+        alt_max_charge = int(node[1] + time_diff * self.alt_max_charge_rate)
+        if alt_max_charge > max_charge:
+            # Make sure max_charge is the larger one
+            max_charge, alt_max_charge = alt_max_charge, max_charge
+
         if max_charge > 100:
             max_charge = 100
+
+        if alt_max_charge > 100:
+            alt_max_charge = 100
 
         # Limit number of choices by 5 minute resolution
         charge_step = int(self.max_charge_rate / 12)  # 12 5 minute steps per hour
@@ -475,6 +515,7 @@ class AStarStrategy(AStar):
         charges = set(range(node[1], min_charge, -discharge_step))
         charges.update(range(node[1], max_charge, charge_step))
         charges.add(max_charge)  # Make sure max is in there
+        charges.add(alt_max_charge)  # Make sure alt max is in there
         charges.add(min_charge)  # Make sure min is in there
         if self.min_charge >= min_charge:  # Make sure total min is in there
             charges.add(self.min_charge)
@@ -495,6 +536,6 @@ class AStarStrategy(AStar):
                     # Do not allow remaining at undershoot level
                     continue
                 yield (next_time, c)
-            elif c == max_charge and c <= self.max_charge:
+            elif c in (max_charge, alt_max_charge) and c <= self.max_charge:
                 # Always allow uninterrupted charge
                 yield (next_time, c)

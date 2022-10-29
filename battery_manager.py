@@ -220,7 +220,7 @@ class BatteryManager(hass.Hass):
             return
 
         next_step = steps[1]
-        self.set_charge_rate(current_state, next_step)
+        await self.set_charge_rate(current_state, next_step)
 
         next_charge = steps[1][1]
         if next_charge > charge:

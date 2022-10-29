@@ -72,6 +72,7 @@ class BatteryManager(hass.Hass):
                     "Undershoot Charge": self.undershoot_charge,
                     "Emergency Charge": self.emergency_charge,
                     "Max Charge Rate": self.max_charge_rate,
+                    "Alternative max Charge Rate": self.alt_max_charge_rate,
                     "Mean Discharge Rate": self.mean_discharge_rate,
                     "Round-Trip Efficiency": self.round_trip_efficiency,
                     "Publish": self.publish,

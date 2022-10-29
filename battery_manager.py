@@ -366,6 +366,8 @@ class LookupEstimator:
     def __call__(self, t1, t2):
         """Estimate the consumption between the two given times."""
 
+        # Fix timezone in case we switch from or to daylight saving
+        t2 = t2.astimezone(t1.tz)
         sample_points = pd.date_range(start=t1, end=t2, freq="H", inclusive="left")
         self.debug(
             f"""Estimating consumption between {t1} and {t2}.

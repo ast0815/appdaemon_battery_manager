@@ -88,6 +88,7 @@ class BatteryManager(hass.Hass):
         # Charge state last time we looked
         self.last_charge = int(await self.get_state(self.charge_state_entity))
         prices = self.global_vars.get("electricity_prices", None)
+        self.log(prices)
         if prices is None or len(prices) == 0:
             self.last_time = pd.Timestamp.now(tz="UTC")
         else:

@@ -165,7 +165,7 @@ class BatteryManager(hass.Hass):
             await self.store()
             return
 
-        now = pd.Timestamp.now(tz=prices.index.tz)
+        now = pd.Timestamp.now(tz=prices.index[0].tz)
         current_price = prices.asof(now)
         charge = int(await self.get_state(self.charge_state_entity))
         target = int(await self.get_state(self.charge_control_entity))

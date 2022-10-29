@@ -92,7 +92,7 @@ class BatteryManager(hass.Hass):
         if prices is None or len(prices) == 0:
             self.last_time = pd.Timestamp.now(tz="UTC")
         else:
-            self.last_time = pd.Timestamp.now(tz=prices.index.tz)
+            self.last_time = pd.Timestamp.now(tz=prices.index[0].tz)
 
         # Estimator of future energy consumption
         self.estimator = LookupEstimator(

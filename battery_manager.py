@@ -180,7 +180,7 @@ class BatteryManager(hass.Hass):
             )
             if self.save_file:
                 self.estimator.save_stats(self.save_file)
-        elif charge < target:
+        elif charge < target and charge_diff > self.max_charge_rate / 24:
             # We are probably charging
             # Slowly learn how fast we charge
             self.max_charge_rate *= 0.999

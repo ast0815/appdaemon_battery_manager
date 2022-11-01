@@ -193,6 +193,7 @@ class BatteryManager(hass.Hass):
         astar = AStarStrategy(
             prices=prices,
             max_charge_rate=self.max_charge_rate,
+            alt_max_charge_rate=self.alt_max_charge_rate,
             consumption_estimator=self.estimator,
             round_trip_efficiency=self.round_trip_efficiency,
             min_charge=self.min_charge,

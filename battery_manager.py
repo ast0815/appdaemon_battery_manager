@@ -87,7 +87,7 @@ class BatteryManager(hass.Hass):
         self.emergency = False
 
         # Charge state last time we looked
-        self.last_charge = int(await self.get_state(self.charge_state_entity))
+        self.last_charge = int(float(await self.get_state(self.charge_state_entity)))
         prices = self.global_vars.get("electricity_prices", None)
         if prices is None or len(prices) == 0:
             self.last_time = pd.Timestamp.now(tz="UTC")
@@ -141,7 +141,7 @@ class BatteryManager(hass.Hass):
         Start charging if it is.
         """
 
-        charge = int(await self.get_state(self.charge_state_entity))
+        charge = int(float(await self.get_state(self.charge_state_entity)))
         threshold = self.emergency_charge
         if charge < threshold:
             if not self.emergency:
@@ -168,8 +168,8 @@ class BatteryManager(hass.Hass):
 
         now = pd.Timestamp.now(tz=prices.index[0].tz)
         current_price = prices.asof(now)
-        charge = int(await self.get_state(self.charge_state_entity))
-        target = int(await self.get_state(self.charge_control_entity))
+        charge = int(float(await self.get_state(self.charge_state_entity)))
+        target = int(float(await self.get_state(self.charge_control_entity)))
         charge_diff = charge - self.last_charge
         time_diff = (now - self.last_time).total_seconds() / 3600  # in hours
 
@@ -275,7 +275,7 @@ class BatteryManager(hass.Hass):
         Just a convenience function to charge up to the current level.
         """
 
-        target = int(await self.get_state(self.charge_state_entity))
+        target = int(float(await self.get_state(self.charge_state_entity)))
         if target < self.min_charge:
             target = self.min_charge
         await self.charge(target)

@@ -52,7 +52,7 @@ class BatteryManager(hass.Hass):
         self.undershoot_charge = int(self.args.get("undershoot_charge", 30))
         self.emergency_charge = int(self.args.get("emergency_charge", 10))
         self.max_charge_rate = float(self.args.get("max_charge_rate", 15))
-        self.alt_max_charge_rate = float(self.args.get("alt_max_charge_rate", 15))
+        self.alt_max_charge_rate = float(self.args.get("alt_max_charge_rate", -1.0))
         self.enable_alt_rate_entity = self.args.get("alt_rate_control", "")
         self.mean_discharge_rate = float(self.args.get("mean_discharge_rate", 10))
         self.round_trip_efficiency = float(self.args.get("round_trip_efficiency", 0.8))
@@ -415,7 +415,7 @@ class AStarStrategy(AStar):
 
         self.prices = prices
         self.max_charge_rate = max_charge_rate
-        if alt_max_charge_rate is None:
+        if alt_max_charge_rate is None or alt_max_charge_rate <= 0.0:
             alt_max_charge_rate = max_charge_rate
         self.alt_max_charge_rate = alt_max_charge_rate
         self.consumption_estimator = consumption_estimator

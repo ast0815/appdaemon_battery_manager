@@ -19,6 +19,7 @@ charge_control : Numerical entity controlling the target charge state in %
 charge_state : Numerical sensor reporting the charge state in %
 max_charge : Maximum charge target to set, optional, default: 90
 min_charge : Minimum charge target to set, optional, default: 30
+end_target : Charge level to target at end of planning period, optional, default: 30
 undershoot_charge : Minimum charge to discharge to, optional, default: 30
 emergency_charge : Charge state at which the AC input will be enabled no matter what, optional, default: 10
 max_charge_rate : Maximum achievable charge rate with AC charging in % per hour, optional, default: 15
@@ -49,6 +50,7 @@ class BatteryManager(hass.Hass):
         self.charge_state_entity = self.args["charge_state"]
         self.max_charge = int(self.args.get("max_charge", 90))
         self.min_charge = int(self.args.get("min_charge", 30))
+        self.end_target = int(self.args.get("end_target", 30))
         self.undershoot_charge = int(self.args.get("undershoot_charge", 30))
         self.emergency_charge = int(self.args.get("emergency_charge", 10))
         self.max_charge_rate = float(self.args.get("max_charge_rate", 15))
@@ -203,7 +205,7 @@ class BatteryManager(hass.Hass):
         )
         current_state = (now, charge)
         end = prices.index[-1] + pd.Timedelta(hours=1)
-        target_state = (end, self.min_charge)
+        target_state = (end, self.end_target)
         steps = list(
             await self.run_in_executor(astar.astar, current_state, target_state)
         )

@@ -150,7 +150,7 @@ class BatteryManager(hass.Hass):
 
     def control_battery(self, kwargs):
         """Callback function to control the battery."""
-        self.run_in_executor(self._control_battery)
+        await self.run_in_executor(self._control_battery)
 
     def _control_battery(self):
         """Actually do the astar path finding and controlling."""

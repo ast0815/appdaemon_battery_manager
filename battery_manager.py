@@ -201,6 +201,7 @@ class BatteryManager(hass.Hass):
             min_charge=self.min_charge,
             undershoot=self.undershoot_charge,
             max_charge=self.max_charge,
+            target_charge=self.end_target,
             debug=self.log,
         )
         current_state = (now, charge)
@@ -412,6 +413,7 @@ class AStarStrategy(AStar):
         min_charge=30,
         max_charge=90,
         undershoot=30,
+        target_charge=30,
         debug=None,
         alt_max_charge_rate=None,
     ):
@@ -427,6 +429,7 @@ class AStarStrategy(AStar):
         self.min_charge = min_charge
         self.max_charge = max_charge
         self.undershoot = undershoot
+        self.target_charge = target_charge
 
         if debug is None:
 
@@ -529,6 +532,8 @@ class AStarStrategy(AStar):
             charges.add(self.min_charge)
         if self.max_charge <= max_charge:  # Make sure total max is in there
             charges.add(self.max_charge)
+        if min_charge <= self.target_charge <= max_charge:
+            charges.add(self.target_charge)  # Make sure target is in there
         charges.add(node[1])  # Make sure current charge and neighbours are in there
         charges.add(node[1] + 1)  # This ensures we do not always switch to "store"
         charges.add(node[1] - 1)  # towards the end of full hours

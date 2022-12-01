@@ -39,9 +39,9 @@ enable_control: Entity used to switch on or off the battery control, optional
 
 
 class BatteryManager(hass.Hass):
-    async def initialize(self):
+    def initialize(self):
         # Unpin the app, so long Astar calculations do not block other callbacks
-        await self.set_app_pin(False)
+        self.set_app_pin(False)
 
         # Set configuration
         self.enable_AC_input_entity = self.args["AC_input"]
@@ -89,7 +89,7 @@ class BatteryManager(hass.Hass):
         self.emergency = False
 
         # Charge state last time we looked
-        self.last_charge = int(float(await self.get_state(self.charge_state_entity)))
+        self.last_charge = int(float(self.get_state(self.charge_state_entity)))
         prices = self.global_vars.get("electricity_prices", None)
         if prices is None or len(prices) == 0:
             self.last_time = pd.Timestamp.now(tz="UTC")
@@ -127,37 +127,37 @@ class BatteryManager(hass.Hass):
         entity = self.get_entity(self.charge_state_entity)
         entity.listen_state(self.charge_change_callback)
 
-    async def charge_change_callback(self, entity, attribute, old, new, kwargs):
+    def charge_change_callback(self, entity, attribute, old, new, kwargs):
         """Called whenever the charge state changes."""
-        await self.check_emergency({})
+        self.check_emergency({})
 
-    async def is_discharging(self):
+    def is_discharging(self):
         """Check whether the current state is discharging the battery."""
 
-        state = await self.get_state(self.enable_AC_input_entity)
+        state = self.get_state(self.enable_AC_input_entity)
         return state == "off"
 
-    async def check_emergency(self, kwargs):
+    def check_emergency(self, kwargs):
         """Check that the charge is not below the emergency level.
 
         Start charging if it is.
         """
 
-        charge = int(float(await self.get_state(self.charge_state_entity)))
+        charge = int(float(self.get_state(self.charge_state_entity)))
         threshold = self.emergency_charge
         if charge < threshold:
             if not self.emergency:
                 self.log("Entering emergency charge state!")
             self.emergency = True
-            await self.store()
+            self.store()
 
-    async def control_battery(self, kwargs):
+    def control_battery(self, kwargs):
         """Callback function to actually control the battery."""
 
         # Do nothing if battery control is swtiched off
         if (
             self.enable_control_entity is not None
-            and await self.get_state(self.enable_control_entity) == "off"
+            and self.get_state(self.enable_control_entity) == "off"
         ):
             return
 
@@ -165,17 +165,17 @@ class BatteryManager(hass.Hass):
         if prices is None or len(prices) == 0:
             # No prices? nothing to do
             self.log("No prices available! Switching to store mode.")
-            await self.store()
+            self.store()
             return
 
         now = pd.Timestamp.now(tz=prices.index[0].tz)
         current_price = prices.asof(now)
-        charge = int(float(await self.get_state(self.charge_state_entity)))
-        target = int(float(await self.get_state(self.charge_control_entity)))
+        charge = int(float(self.get_state(self.charge_state_entity)))
+        target = int(float(self.get_state(self.charge_control_entity)))
         charge_diff = charge - self.last_charge
         time_diff = (now - self.last_time).total_seconds() / 3600  # in hours
 
-        if await self.is_discharging():
+        if self.is_discharging():
             # Learn how fast we discharge
             self.estimator.learn_discharge_rate(
                 self.last_time, -charge_diff / time_diff
@@ -207,7 +207,7 @@ class BatteryManager(hass.Hass):
         current_state = (now, charge)
         end = prices.index[-1] + pd.Timedelta(hours=1)
         target_state = (end, self.end_target)
-        steps = await self.run_in_executor(astar.astar, current_state, target_state)
+        steps = self.run_in_executor(astar.astar, current_state, target_state)
         if steps is None:
             steps = []
         else:
@@ -222,27 +222,27 @@ class BatteryManager(hass.Hass):
         if len(steps) < 2:
             # Something has gone wrong.
             self.log("Less than two states in the optimal path!")
-            await self.store()
+            self.store()
             return
 
         next_step = steps[1]
-        await self.set_charge_rate(current_state, next_step)
+        self.set_charge_rate(current_state, next_step)
 
         next_charge = steps[1][1]
         if next_charge > charge:
             self.emergency = False
-            await self.charge(next_charge)
+            self.charge(next_charge)
         elif self.emergency:
             # Still in emergency state:
-            await self.store()
+            self.store()
         elif next_charge < charge:
-            await self.discharge()
+            self.discharge()
         else:
             # Use 'charge' with target instead of 'store' in case the current charge level
             # has changed while we were calculating the optimal route
-            await self.charge(next_charge)
+            self.charge(next_charge)
 
-    async def set_charge_rate(self, now_state, target_state):
+    def set_charge_rate(self, now_state, target_state):
         """Set the alternative charge rate if appropriate."""
 
         if not self.enable_alt_rate_entity:
@@ -255,15 +255,15 @@ class BatteryManager(hass.Hass):
         target_rate = charge_diff / time_diff
 
         if self.alt_max_charge_rate <= target_rate <= self.max_charge_rate:
-            await self.turn_off(self.enable_alt_rate_entity)
+            self.turn_off(self.enable_alt_rate_entity)
         elif self.alt_max_charge_rate >= target_rate >= self.max_charge_rate:
-            await self.turn_on(self.enable_alt_rate_entity)
+            self.turn_on(self.enable_alt_rate_entity)
         elif target_rate <= self.alt_max_charge_rate <= self.max_charge_rate:
-            await self.turn_on(self.enable_alt_rate_entity)
+            self.turn_on(self.enable_alt_rate_entity)
         elif target_rate <= self.max_charge_rate <= self.alt_max_charge_rate:
-            await self.turn_off(self.enable_alt_rate_entity)
+            self.turn_off(self.enable_alt_rate_entity)
 
-    async def charge(self, target=None):
+    def charge(self, target=None):
         """Charge the battery."""
 
         if target is None:
@@ -271,24 +271,24 @@ class BatteryManager(hass.Hass):
         if target < self.min_charge:
             target = self.min_charge
 
-        await self.set_value(self.charge_control_entity, target)
-        await self.turn_on(self.enable_AC_input_entity)
+        self.set_value(self.charge_control_entity, target)
+        self.turn_on(self.enable_AC_input_entity)
 
-    async def store(self):
+    def store(self):
         """Keep current charge level.
 
         Just a convenience function to charge up to the current level.
         """
 
-        target = int(float(await self.get_state(self.charge_state_entity)))
+        target = int(float(self.get_state(self.charge_state_entity)))
         if target < self.min_charge:
             target = self.min_charge
-        await self.charge(target)
+        self.charge(target)
 
-    async def discharge(self):
+    def discharge(self):
         """Discharge the battery."""
 
-        await self.turn_off(self.enable_AC_input_entity)
+        self.turn_off(self.enable_AC_input_entity)
 
 
 class LookupEstimator:

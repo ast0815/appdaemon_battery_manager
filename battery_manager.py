@@ -152,7 +152,11 @@ class BatteryManager(hass.Hass):
             self.store()
 
     def control_battery(self, kwargs):
-        """Callback function to actually control the battery."""
+        """Callback function to control the battery."""
+        self.run_in_executor(self._control_battery)
+
+    def _control_battery(self):
+        """Actually do the astar path finding and controlling."""
 
         # Do nothing if battery control is swtiched off
         if (
@@ -207,7 +211,7 @@ class BatteryManager(hass.Hass):
         current_state = (now, charge)
         end = prices.index[-1] + pd.Timedelta(hours=1)
         target_state = (end, self.end_target)
-        steps = self.run_in_executor(astar.astar, current_state, target_state)
+        steps = astar.astar(current_state, target_state)
         if steps is None:
             steps = []
         else:

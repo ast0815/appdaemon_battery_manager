@@ -81,6 +81,7 @@ class BatteryManager(hass.Hass):
                     "Save File": self.save_file,
                     "Learning Attributes": self.learning_attributes,
                     "Learning Factor": self.learning_factor,
+                    "Enable Control Entity": self.enable_control_entity
                 },
             )
         )
@@ -223,6 +224,14 @@ class BatteryManager(hass.Hass):
             # Something has gone wrong.
             self.log("Less than two states in the optimal path!")
             self.store()
+            return
+
+        # Do nothing if battery control is swtiched off
+        # In case it was switched while calculating the next step
+        if (
+            self.enable_control_entity is not None
+            and await self.get_state(self.enable_control_entity) == "off"
+        ):
             return
 
         next_step = steps[1]

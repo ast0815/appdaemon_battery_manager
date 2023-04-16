@@ -230,7 +230,7 @@ class BatteryManager(hass.Hass):
         # In case it was switched while calculating the next step
         if (
             self.enable_control_entity is not None
-            and await self.get_state(self.enable_control_entity) == "off"
+            and self.get_state(self.enable_control_entity) == "off"
         ):
             return
 

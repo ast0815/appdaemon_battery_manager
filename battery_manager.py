@@ -205,7 +205,7 @@ class BatteryManager(hass.Hass):
         current_state = (now, charge)
         end = prices.index[-1] + pd.Timedelta(hours=1)
         target_state = (end, self.end_target)
-        steps = self.run_in_executor(astar.astar, current_state, target_state)
+        steps = astar.astar(current_state, target_state)
         if steps is None:
             steps = []
         else:

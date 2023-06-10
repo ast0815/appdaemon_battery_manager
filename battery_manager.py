@@ -242,7 +242,7 @@ class BatteryManager(hass.Hass):
             # Still in emergency state:
             self.store()
         elif next_charge < charge:
-            self.discharge()
+            self.discharge(next_charge)
         else:
             # Use 'charge' with target instead of 'store' in case the current charge level
             # has changed while we were calculating the optimal route
@@ -289,11 +289,16 @@ class BatteryManager(hass.Hass):
         target = int(float(self.get_state(self.charge_state_entity)))
         if target < self.min_charge:
             target = self.min_charge
+
         self.charge(target)
 
-    def discharge(self):
+    def discharge(self, target=None):
         """Discharge the battery."""
 
+        if target is None:
+            target = self.min_charge
+
+        self.set_value(self.charge_control_entity, target)
         self.turn_off(self.enable_AC_input_entity)
 
 

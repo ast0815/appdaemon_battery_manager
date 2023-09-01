@@ -212,7 +212,7 @@ class BatteryManager(hass.Hass):
             steps = list(steps)
 
         # Publish plan for other apps to use
-        if self.publish:
+        if self.publish and len(steps) > 0:
             index, values = zip(*steps)
             series = pd.Series(values, index)
             self.global_vars[self.publish] = series

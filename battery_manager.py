@@ -391,7 +391,7 @@ class LookupEstimator:
 
         # Fix timezone in case we switch from or to daylight saving
         t2 = t2.astimezone(t1.tz)
-        sample_points = pd.date_range(start=t1, end=t2, freq="H", inclusive="left")
+        sample_points = pd.date_range(start=t1, end=t2, freq="h", inclusive="left")
         self.debug(
             f"""Estimating consumption between {t1} and {t2}.
             Using sample points:

@@ -520,7 +520,7 @@ class AStarStrategy(AStar):
             hours=1
         )
         
-        if (2 <= next_time.hour <= 7):
+        if (1 <= next_time.hour <= 7):
             lower_limit = self.min_charge_night
         else:
             lower_limit = self.min_charge

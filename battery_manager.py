@@ -20,6 +20,8 @@ charge_state : Numerical sensor reporting the charge state in %
 max_charge : Maximum charge target to set, optional, default: 90
 min_charge : Minimum charge target to set, optional, default: 30
 min_charge_night : Minimum charge target to set during the night (3AM - 6AM), optional, default: 30
+force_min_charget: If True, battery will discharged to the minimum at force_hour, default: False
+force_hour : When the battery must be discharged to the minimum, default: 1
 end_target : Charge level to target at end of planning period, optional, default: 30
 undershoot_charge : Minimum charge to discharge to, optional, default: 30
 emergency_charge : Charge state at which the AC input will be enabled no matter what, optional, default: 10
@@ -49,6 +51,8 @@ class BatteryManager(hass.Hass):
         self.max_charge = int(self.args.get("max_charge", 90))
         self.min_charge = int(self.args.get("min_charge", 30))
         self.min_charge_night = int(self.args.get("min_charge_night", 30))
+        self.force_min_charge = bool(self.args.get("force_min_charge", False))
+        self.force_hour = int(self.args.get("force_hour", 1))
         self.end_target = int(self.args.get("end_target", 30))
         self.undershoot_charge = int(self.args.get("undershoot_charge", 30))
         self.emergency_charge = int(self.args.get("emergency_charge", 10))
@@ -70,7 +74,9 @@ class BatteryManager(hass.Hass):
                 {
                     "Max Charge": self.max_charge,
                     "Min Charge": self.min_charge,
-                    "Min Charge Nicht": self.min_charge_night,
+                    "Min Charge Night": self.min_charge_night,
+                    "Force Min Charge": self.force_min_charge,
+                    "Force Hour": self.force_hour,
                     "Undershoot Charge": self.undershoot_charge,
                     "Emergency Charge": self.emergency_charge,
                     "Max Charge Rate": self.max_charge_rate,
@@ -201,6 +207,8 @@ class BatteryManager(hass.Hass):
             round_trip_efficiency=self.round_trip_efficiency,
             min_charge=self.min_charge,
             min_charge_night=self.min_charge_night,
+            force_min_charge=self.force_min_charge,
+            force_hour=self.force_hour,
             undershoot=self.undershoot_charge,
             max_charge=self.max_charge,
             target_charge=self.end_target,
@@ -416,6 +424,8 @@ class AStarStrategy(AStar):
     round_trip_efficiency : Assumed round trip efficiency of charge-discharge cycle
     min_charge : The minimum charge state to aim for
     min_charge_night : The minimum charge state to aim for at night
+    force_min_charge : Force the minimum charge state at force_hour
+    force_hour : What hour of the day to force the minimum charge
     max_charge : The maximum charge state to aim for
     undershoot : Minimum charge state to discharge to
     debug : Function to log debug messages, optional
@@ -430,6 +440,8 @@ class AStarStrategy(AStar):
         round_trip_efficiency=1.0,
         min_charge=30,
         min_charge_night=30,
+        force_min_charge=False,
+        force_hour=1,
         max_charge=90,
         undershoot=30,
         target_charge=30,
@@ -447,6 +459,8 @@ class AStarStrategy(AStar):
         self.round_trip_efficiency = round_trip_efficiency
         self.min_charge = min_charge
         self.min_charge_night = min_charge_night
+        self.force_min_charge = force_min_charge
+        self.force_hour = force_hour
         self.max_charge = max_charge
         self.undershoot = undershoot
         self.target_charge = target_charge
@@ -481,6 +495,11 @@ class AStarStrategy(AStar):
             charge_consumption = charge_diff / self.round_trip_efficiency
 
         cost = price * (direct_consumption + charge_consumption)
+
+        # Force discharge to minimum
+        if self.force_min_charge and (n2[0].hour == self.force_hour):
+            cost += n2[1]*100.0
+
         return cost
 
     def heuristic_cost_estimate(self, current, goal):
@@ -520,11 +539,6 @@ class AStarStrategy(AStar):
             hours=1
         )
         
-        if (1 <= next_time.hour <= 7):
-            lower_limit = self.min_charge_night
-        else:
-            lower_limit = self.min_charge
-        
         time_diff = (next_time - time).total_seconds() / 3600  # in hours
         consumption = self.consumption_estimator(time, next_time)
         min_charge = int(node[1] - consumption)
@@ -541,7 +555,14 @@ class AStarStrategy(AStar):
 
         if alt_max_charge > 100:
             alt_max_charge = 100
-
+        
+        # Special treatment at night
+        # Make sure unexpected drops to 0% happen when no one cares 
+        if (0 <= next_time.hour <= 7):
+            lower_limit = self.min_charge_night
+        else:
+            lower_limit = self.min_charge
+        
         # Limit number of choices by 5 minute resolution
         charge_step = int(self.max_charge_rate / 12)  # 12 5 minute steps per hour
         discharge_step = int(consumption / time_diff / 12)

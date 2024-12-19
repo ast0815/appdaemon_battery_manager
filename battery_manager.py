@@ -19,8 +19,8 @@ charge_control : Numerical entity controlling the target charge state in %
 charge_state : Numerical sensor reporting the charge state in %
 max_charge : Maximum charge target to set, optional, default: 90
 min_charge : Minimum charge target to set, optional, default: 30
-min_charge_night : Minimum charge target to set during the night (3AM - 6AM), optional, default: 30
-force_min_charget: If True, battery will discharged to the minimum at force_hour, default: False
+min_charge_night : Minimum charge target to set during the night (0AM - 7AM), optional, default: same as min_charge
+force_min_charge: If True, battery will discharged to the minimum at force_hour, default: False
 force_hour : When the battery must be discharged to the minimum, default: 1
 end_target : Charge level to target at end of planning period, optional, default: 30
 undershoot_charge : Minimum charge to discharge to, optional, default: 30
@@ -50,7 +50,7 @@ class BatteryManager(hass.Hass):
         self.charge_state_entity = self.args["charge_state"]
         self.max_charge = int(self.args.get("max_charge", 90))
         self.min_charge = int(self.args.get("min_charge", 30))
-        self.min_charge_night = int(self.args.get("min_charge_night", 30))
+        self.min_charge_night = int(self.args.get("min_charge_night", self.min_charge))
         self.force_min_charge = bool(self.args.get("force_min_charge", False))
         self.force_hour = int(self.args.get("force_hour", 1))
         self.end_target = int(self.args.get("end_target", 30))

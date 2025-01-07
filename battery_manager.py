@@ -24,7 +24,7 @@ force_min_charge: If True, battery will discharged to the minimum at force_hour,
 force_hour : When the battery must be discharged to the minimum, default: 1
 end_target : Charge level to target at end of planning period, optional, default: 30
 undershoot_charge : Minimum charge to discharge to, optional, default: same as min_charge
-emergency_charge : Charge state at which the AC input will be enabled no matter what, optional, default: 10
+emergency_charge : Charge state below which the AC input will be enabled no matter what, optional, default: same as min_charge - 1
 max_charge_rate : Maximum achievable charge rate with AC charging in % per hour, optional, default: 15
 alt_max_charge_rate : Alternative maximum achievable charge rate with AC charging in % per hour, enabled with alt_rate_enable switch entity, optional, default: 15
 alt_rate_control : Switch entity to enable the alternative charge rate, optional
@@ -55,7 +55,7 @@ class BatteryManager(hass.Hass):
         self.force_hour = int(self.args.get("force_hour", 1))
         self.end_target = int(self.args.get("end_target", 30))
         self.undershoot_charge = int(self.args.get("undershoot_charge", self.min_charge))
-        self.emergency_charge = int(self.args.get("emergency_charge", 10))
+        self.emergency_charge = int(self.args.get("emergency_charge", self.min_charge - 1))
         self.max_charge_rate = float(self.args.get("max_charge_rate", 15))
         self.alt_max_charge_rate = float(self.args.get("alt_max_charge_rate", -1.0))
         self.enable_alt_rate_entity = self.args.get("alt_rate_control", "")

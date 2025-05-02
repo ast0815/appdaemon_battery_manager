@@ -284,7 +284,7 @@ class BatteryManager(hass.Hass):
     def charge(self, target=None):
         """Charge the battery."""
 
-        if target is None:
+        if target is None or target > self.max_charge:
             target = self.max_charge
         min_charge = min(self.min_charge, self.min_charge_night)
         if target < min_charge:
@@ -303,6 +303,8 @@ class BatteryManager(hass.Hass):
         min_charge = min(self.min_charge, self.min_charge_night)
         if target < min_charge:
             target = min_charge
+        if target > self.max_charge:
+            target = self.max_charge
 
         self.charge(target)
 

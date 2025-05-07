@@ -7,6 +7,8 @@ from functools import lru_cache
 import pickle
 import os
 
+from concurrent.futures import ProcessPoolExecutor
+
 """App to control batteries charging and discharging based on elecricity prices.
 
 It depends on another app publishing a Pandas time series of current and future
@@ -91,6 +93,9 @@ class BatteryManager(hass.Hass):
                 },
             )
         )
+        
+        # Create our own executor
+        self.executor = ProcessPoolExecutor(2)
 
         # Are we in emergency charge mode?
         self.emergency = False
@@ -120,6 +125,7 @@ class BatteryManager(hass.Hass):
         now = datetime.datetime.now()
         start = now.replace(minute=0, second=30)
         while (start - now).total_seconds() <= 0:
+            #start += datetime.timedelta(seconds=5)
             start += datetime.timedelta(minutes=5)
         self.run_every(
             self.control_battery,
@@ -158,13 +164,13 @@ class BatteryManager(hass.Hass):
             self.emergency = True
             self.store()
 
-    def control_battery(self, kwargs):
+    async def control_battery(self, kwargs):
         """Callback function to actually control the battery."""
 
         # Do nothing if battery control is swtiched off
         if (
             self.enable_control_entity is not None
-            and self.get_state(self.enable_control_entity) == "off"
+            and await self.get_state(self.enable_control_entity) == "off"
         ):
             return
 
@@ -172,13 +178,13 @@ class BatteryManager(hass.Hass):
         if prices is None or len(prices) == 0:
             # No prices? nothing to do
             self.log("No prices available! Switching to store mode.")
-            self.store()
+            self.store_async()
             return
 
         now = pd.Timestamp.now(tz=prices.index[0].tz)
         current_price = prices.asof(now)
-        charge = int(float(self.get_state(self.charge_state_entity)))
-        target = int(float(self.get_state(self.charge_control_entity)))
+        charge = int(float(await self.get_state(self.charge_state_entity)))
+        target = int(float(await self.get_state(self.charge_control_entity)))
         charge_diff = charge - self.last_charge
         time_diff = (now - self.last_time).total_seconds() / 3600  # in hours
 
@@ -199,25 +205,27 @@ class BatteryManager(hass.Hass):
         self.last_time = now
 
         # Use AStar algorithm to find cheapest way
-        astar = AStarStrategy(
-            prices=prices,
-            max_charge_rate=self.max_charge_rate,
-            alt_max_charge_rate=self.alt_max_charge_rate,
-            consumption_estimator=self.estimator,
-            round_trip_efficiency=self.round_trip_efficiency,
-            min_charge=self.min_charge,
-            min_charge_night=self.min_charge_night,
-            force_min_charge=self.force_min_charge,
-            force_hour=self.force_hour,
-            undershoot=self.undershoot_charge,
-            max_charge=self.max_charge,
-            target_charge=self.end_target,
-            debug=self.log,
-        )
+        astar_kwargs = {
+            "prices" : prices,
+            "max_charge_rate" : self.max_charge_rate,
+            "alt_max_charge_rate" : self.alt_max_charge_rate,
+            "consumption_estimator" : self.estimator,
+            "round_trip_efficiency" : self.round_trip_efficiency,
+            "min_charge" : self.min_charge,
+            "min_charge_night" : self.min_charge_night,
+            "force_min_charge" : self.force_min_charge,
+            "force_hour" : self.force_hour,
+            "undershoot" : self.undershoot_charge,
+            "max_charge" : self.max_charge,
+            "target_charge" : self.end_target,
+            #"debug" : self.log,
+        }
         current_state = (now, charge)
         end = prices.index[-1] + pd.Timedelta(hours=1)
         target_state = (end, self.end_target)
-        steps = astar.astar(current_state, target_state)
+        
+        steps = await self.AD.loop.run_in_executor(self.executor, run_astar, astar_kwargs, current_state, target_state)
+
         if steps is None:
             steps = []
         else:
@@ -232,14 +240,14 @@ class BatteryManager(hass.Hass):
         if len(steps) < 2:
             # Something has gone wrong.
             self.log("Less than two states in the optimal path!")
-            self.store()
+            self.store_async()
             return
 
         # Do nothing if battery control is swtiched off
         # In case it was switched while calculating the next step
         if (
             self.enable_control_entity is not None
-            and self.get_state(self.enable_control_entity) == "off"
+            and await self.get_state(self.enable_control_entity) == "off"
         ):
             return
 
@@ -252,7 +260,7 @@ class BatteryManager(hass.Hass):
             self.charge(next_charge)
         elif self.emergency:
             # Still in emergency state:
-            self.store()
+            self.store_async()
         elif next_charge < charge:
             self.discharge(next_charge)
         else:
@@ -308,6 +316,21 @@ class BatteryManager(hass.Hass):
 
         self.charge(target)
 
+    async def store_async(self):
+        """Keep current charge level.
+
+        Just a convenience function to charge up to the current level.
+        """
+
+        target = int(float(await self.get_state(self.charge_state_entity)))
+        min_charge = min(self.min_charge, self.min_charge_night)
+        if target < min_charge:
+            target = min_charge
+        if target > self.max_charge:
+            target = self.max_charge
+
+        self.charge(target)
+
     def discharge(self, target=None):
         """Discharge the battery."""
 
@@ -336,13 +359,13 @@ class LookupEstimator:
         self.initial_guess = initial_guess
         self.split_by = tuple(split_by)
         self.update_speed = update_speed
-        if debug is None:
-
-            def debug(message):
-                pass
-
-        self.debug = debug
-
+        
+        if debug is not None:
+            self.debug = debug
+    
+    def debug(self, message):
+        pass
+    
     def load_stats(self, filename):
         """Load stats from file."""
 
@@ -414,6 +437,12 @@ class LookupEstimator:
         return mean_rate * time_diff
 
 
+def run_astar(astar_kwargs, *args, **kwargs):
+    """Convenience function to run in executor"""
+    astar = AStarStrategy(**astar_kwargs)
+    return astar.astar(*args, **kwargs)
+
+
 class AStarStrategy(AStar):
     """Use A* algorithm to find the cheapest way of charging and discharging the battery.
 
@@ -467,15 +496,14 @@ class AStarStrategy(AStar):
         self.undershoot = undershoot
         self.target_charge = target_charge
 
-        if debug is None:
-
-            def debug(message):
-                pass
-
-        self.debug = debug
+        if debug is not None:
+            self.debug = debug
 
         # Pre-calculate minimum prices for rest of time range
         self.min_future_prices = prices[::-1].expanding().min()[::-1]
+
+    def debug(self, message):
+        pass
 
     def distance_between(self, n1, n2):
         """Calculate the cost when transitioning from state n1 to state n2."""

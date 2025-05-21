@@ -307,8 +307,13 @@ class BatteryManager(hass.Hass):
         Just a convenience function to charge up to the current level.
         """
 
-        target = int(float(self.get_state(self.charge_state_entity)))
+        cur_target = int(float(self.get_state(self.charge_control_entity)))
+        cur_state = int(float(self.get_state(self.charge_state_entity)))
         min_charge = min(self.min_charge, self.min_charge_night)
+        if abs(cur_target - cur_state) < 2:
+            target = cur_target
+        else:
+            target = cur_state
         if target < min_charge:
             target = min_charge
         if target > self.max_charge:
@@ -322,8 +327,13 @@ class BatteryManager(hass.Hass):
         Just a convenience function to charge up to the current level.
         """
 
-        target = int(float(await self.get_state(self.charge_state_entity)))
+        cur_target = int(float(await self.get_state(self.charge_control_entity)))
+        cur_state = int(float(await self.get_state(self.charge_state_entity)))
         min_charge = min(self.min_charge, self.min_charge_night)
+        if abs(cur_target - cur_state) < 2:
+            target = cur_target
+        else:
+            target = cur_state
         if target < min_charge:
             target = min_charge
         if target > self.max_charge:

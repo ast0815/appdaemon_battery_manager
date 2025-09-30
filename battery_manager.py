@@ -42,6 +42,8 @@ enable_control: Entity used to switch on or off the battery control, optional
 
 """
 
+PRICE_DATA_TIMEDELTA = pd.Timedelta(minutes=15)
+
 
 class BatteryManager(hass.Hass):
     def initialize(self):
@@ -178,7 +180,7 @@ class BatteryManager(hass.Hass):
         if prices is None or len(prices) == 0:
             # No prices? nothing to do
             self.log("No prices available! Switching to store mode.")
-            self.store_async()
+            await self.store_async()
             return
 
         now = pd.Timestamp.now(tz=prices.index[0].tz)
@@ -216,7 +218,7 @@ class BatteryManager(hass.Hass):
             #"debug" : self.log,
         }
         current_state = (now, charge)
-        end = prices.index[-1] + pd.Timedelta(hours=1)
+        end = prices.index[-1] + PRICE_DATA_TIMEDELTA
         target_state = (end, self.end_target)
         
         steps = await self.AD.loop.run_in_executor(self.executor, run_astar, astar_kwargs, current_state, target_state)
@@ -235,7 +237,7 @@ class BatteryManager(hass.Hass):
         if len(steps) < 2:
             # Something has gone wrong.
             self.log("Less than two states in the optimal path!")
-            self.store_async()
+            await self.store_async()
             return
 
         # Do nothing if battery control is swtiched off
@@ -255,7 +257,7 @@ class BatteryManager(hass.Hass):
             self.charge(next_charge)
         elif self.emergency:
             # Still in emergency state:
-            self.store_async()
+            await self.store_async()
         elif next_charge < charge:
             self.discharge(next_charge)
         else:
@@ -429,7 +431,7 @@ class LookupEstimator:
 
         # Fix timezone in case we switch from or to daylight saving
         t2 = t2.astimezone(t1.tz)
-        sample_points = pd.date_range(start=t1, end=t2, freq="h", inclusive="left")
+        sample_points = pd.date_range(start=t1, end=t2, freq=PRICE_DATA_TIMEDELTA, inclusive="left")
         self.debug(
             f"""Estimating consumption between {t1} and {t2}.
             Using sample points:
@@ -566,13 +568,15 @@ class AStarStrategy(AStar):
 
         time = node[0]
 
-        # Are we past the know price range? Nowhere to go!
-        if time >= self.prices.index[-1] + pd.Timedelta(hours=1):
-            return
+        # Are we past the known price range? Nowhere to go!
+        if time >= self.prices.index[-1] + PRICE_DATA_TIMEDELTA:
+            return 
 
-        next_time = time.replace(minute=0, second=0, microsecond=0) + pd.Timedelta(
-            hours=1
-        )
+        # Is this the last step?
+        if time >= self.prices.index[-1]:
+            next_time = self.prices.index[-1] + PRICE_DATA_TIMEDELTA
+        else:
+            next_time = time.replace(second=0, microsecond=0) + PRICE_DATA_TIMEDELTA
         
         time_diff = (next_time - time).total_seconds() / 3600  # in hours
         consumption = self.consumption_estimator(time, next_time)
